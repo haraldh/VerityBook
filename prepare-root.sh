@@ -1,0 +1,368 @@
+#!/bin/bash
+set -ex
+
+usage() {
+    cat << EOF
+Usage: $PROGNAME [OPTION]
+
+Creates a directory with a readonly root on squashfs, a dm_verity file and an EFI executable
+
+  -h, --help             Display this help
+  -p, --pkglist FILE     The packages to install read from FILE (default: pkglist.txt)
+  -e, --excludelist FILE The packages to install read from FILE (default: excludelist.txt)
+  -r, --releasever NUM   Used Fedora release version NUM (default: $VERSION_ID)
+  -o, --outdir DIR       Creates DIR and puts all files in there (default: NAME-NUM-DATE)
+  -n, --name NAME        The NAME of the product (default: FedoraBook)
+  -l, --logo FILE        Uses the .bmp FILE to display as a splash screen (default: logo.bmp)
+  --noupdate             Do not install from Fedora Updates
+EOF
+}
+
+CURDIR=$(pwd)
+
+PROGNAME=${0##*/}
+BASEDIR=${0%/*}
+WITH_UPDATES=1
+
+TEMP=$(
+    getopt -o 'p:o:n:r:l:e:' \
+        --long pkglist: \
+        --long excludelist: \
+        --long outdir: \
+        --long name: \
+        --long releasever: \
+        --long logo: \
+        --long noupdates \
+        -- "$@"
+    )
+
+if (( $? != 0 )); then
+    usage >&2
+    exit 1
+fi
+
+eval set -- "$TEMP"
+unset TEMP
+. /etc/os-release
+
+while true; do
+    case "$1" in
+        '-p'|'--pkglist')
+            if [[ -f $2 ]]; then
+                PKGLIST=$(<$2)
+            else
+                PKGLIST="$2"
+            fi
+            shift 2; continue
+            ;;
+        '-e'|'--excludelist')
+            if [[ -f $2 ]]; then
+                EXCLUDELIST=$(<$2)
+            else
+                EXCLUDELIST="$2"
+            fi
+            shift 2; continue
+            ;;
+        '-o'|'--outdir')
+            OUTDIR="$2"
+            shift 2; continue
+            ;;
+        '-n'|'--name')
+            NAME="$2"
+            shift 2; continue
+            ;;
+        '-r'|'--releasever')
+            RELEASEVER="$2"
+            shift 2; continue
+            ;;
+        '-l'|'--logo')
+            LOGO="$2"
+            shift 2; continue
+            ;;
+        '--noupdates')
+            unset WITH_UPDATES
+            shift 1; continue
+            ;;
+        '--')
+            shift
+            break
+            ;;
+        *)
+            echo 'Internal error!' >&2
+            exit 1
+            ;;
+    esac
+done
+
+[[ $EXCLUDELIST ]] || [[ -f excludelist.txt ]] && EXCLUDELIST=$(<excludelist.txt)
+NAME=${NAME:-"FedoraBook"}
+RELEASEVER=${RELEASEVER:-$VERSION_ID}
+OUTDIR=${OUTDIR:-"${CURDIR}/${NAME}-${VERSION_ID}"}
+VERSION_ID="${RELEASEVER}.$(date -u +'%Y%m%d%H%M%S')"
+
+[[ $TMPDIR ]] || TMPDIR=/var/tmp
+readonly TMPDIR="$(realpath -e "$TMPDIR")"
+[ -d "$TMPDIR" ] || {
+    printf "%s\n" "${PROGNAME}: Invalid tmpdir '$tmpdir'." >&2
+    exit 1
+}
+
+readonly MY_TMPDIR="$(mktemp -p "$TMPDIR/" -d -t ${PROGNAME}.XXXXXX)"
+[ -d "$MY_TMPDIR" ] || {
+    printf "%s\n" "${PROGNAME}: mktemp -p '$TMPDIR/' -d -t ${PROGNAME}.XXXXXX failed." >&2
+    exit 1
+}
+
+# clean up after ourselves no matter how we die.
+trap '
+    ret=$?;
+    mountpoint -q "$sysroot"/var/cache/dnf && umount "$sysroot"/var/cache/dnf
+    for i in "$sysroot"/{dev,sys,proc,run}; do
+       [[ -d "$i" ]] && mountpoint -q "$i" && umount "$i"
+    done
+    [[ $MY_TMPDIR ]] && rm -rf --one-file-system -- "$MY_TMPDIR"
+    exit $ret;
+    ' EXIT
+
+# clean up after ourselves no matter how we die.
+trap 'exit 1;' SIGINT
+
+readonly sysroot="${MY_TMPDIR}/sysroot"
+
+mkdir -p "$sysroot"/{dev,proc,sys,run}
+mount --bind /proc "$sysroot/proc"
+#mount --bind /run "$sysroot/run"
+mount --bind /sys "$sysroot/sys"
+mount -t devtmpfs devtmpfs "$sysroot/dev"
+
+mkdir -p "$sysroot"/var/cache/dnf
+mount --bind /var/cache/dnf "$sysroot"/var/cache/dnf
+
+dnf -v --nogpgcheck --installroot "$sysroot"/ --releasever "$RELEASEVER" --disablerepo='*' \
+    --enablerepo=fedora \
+    ${WITH_UPDATES:+--enablerepo=updates} \
+    --exclude="$EXCLUDELIST" \
+    --setopt=keepcache=True \
+    install -y \
+    dracut \
+    passwd \
+    rootfiles \
+    systemd \
+    systemd-udev \
+    kernel \
+    bash \
+    sudo \
+    strace \
+    xfsprogs \
+    pciutils \
+    microcode_ctl \
+    nss_db \
+    keyutils \
+    make \
+    less \
+    polkit \
+    util-linux \
+    rng-tools \
+    openssl \
+    cryptsetup \
+    clevis \
+    clevis-luks \
+    clevis-systemd \
+    jose \
+    tpm2-tools \
+    coreutils \
+    libpwquality \
+    tpm2-tss \
+    ncurses-base \
+    dbus-broker \
+    $PKGLIST
+
+cp "$CURDIR/clonedisk.sh" "$sysroot"/usr/bin/clonedisk
+
+rpm --root "$sysroot" -qa | sort > "$sysroot"/usr/rpm-list.txt
+mkdir -p "$sysroot"/overlay/efi
+
+cp "${BASEDIR}"/pre-pivot.sh "$sysroot"/pre-pivot.sh
+chmod 0755 "$sysroot"/pre-pivot.sh
+
+KVER=$(cd "$sysroot"/lib/modules/; ls -1d ??* | tail -1)
+
+sed -ie 's#\(tpm2_[^ ]*\) #\1 -T device:${TPM2TOOLS_DEVICE_FILE[0]} #g' "$sysroot"/usr/bin/clevis-*-tpm2
+
+#---------------
+# rngd
+ln -fsnr "$sysroot"/usr/lib/systemd/system/rngd.service "$sysroot"/usr/lib/systemd/system/basic.target.wants/rngd.service
+
+chroot  "$sysroot" \
+	dracut -N --kver $KVER --force \
+	--filesystems "squashfs vfat xfs" \
+	--add-drivers "=drivers/char/tpm" \
+	-m "bash systemd systemd-initrd modsign crypt dm kernel-modules qemu rootfs-block udev-rules dracut-systemd base fs-lib shutdown terminfo" \
+	--install /usr/lib/systemd/systemd-veritysetup \
+	--install /usr/lib/systemd/system-generators/systemd-veritysetup-generator \
+	--install "clonedisk wipefs sfdisk dd mkfs.xfs mkswap chroot mountpoint mkdir stat openssl" \
+	--install "clevis clevis-luks-bind jose clevis-encrypt-tpm2 clevis-decrypt clevis-luks-unlock clevis-decrypt-tpm2"  \
+	--install "cryptsetup tail sort pwmake mktemp " \
+	--install "tpm2_createprimary tpm2_pcrlist tpm2_createpolicy tpm2_create tpm2_load tpm2_unseal tpm2_takeownership" \
+	--install "strace" \
+	--include /pre-pivot.sh /lib/dracut/hooks/pre-pivot/pre-pivot.sh \
+	--include /overlay / \
+	--install /usr/lib/systemd/system/clevis-luks-askpass.path \
+	--install /usr/lib/systemd/system/clevis-luks-askpass.service \
+	--install /usr/libexec/clevis-luks-askpass \
+	--include /usr/share/cracklib/ /usr/share/cracklib/ \
+	--install /usr/lib64/libtss2-esys.so.0 \
+	--install /usr/lib64/libtss2-tcti-device.so.0 \
+	--install /sbin/rngd \
+	--install /usr/lib/systemd/system/basic.target.wants/rngd.service
+
+rm "$sysroot"/pre-pivot.sh
+#bash -i
+
+umount "$sysroot"/var/cache/dnf
+
+mkdir -p "$sysroot"/usr/share/factory/data/{var/etc,home}
+ln -sfnr "$sysroot"/usr/share/factory/data/var "$sysroot"/usr/share/factory/var
+ln -sfnr "$sysroot"/usr/share/factory/data/home "$sysroot"/usr/share/factory/home
+
+#---------------
+# timesync
+ln -fsnr "$sysroot"/usr/lib/systemd/system/systemd-timesyncd.service "$sysroot"/usr/lib/systemd/system/sysinit.target.wants/systemd-timesyncd.service
+
+#---------------
+# dbus-broker
+ln -fsnr "$sysroot"/usr/lib/systemd/system/dbus-broker.service "$sysroot"/etc/systemd/system/dbus.service
+
+#---------------
+# ssh
+if [[ -d "$sysroot"/etc/ssh ]]; then
+    mv "$sysroot"/etc/ssh "$sysroot"/usr/share/factory/var/etc/ssh
+    ln -sfnr "$sysroot"/var/etc/ssh "$sysroot"/etc/ssh
+fi
+
+#---------------
+# tpm2-tss 
+if [[ -f "$sysroot"/usr/lib/udev/rules.d/60-tpm-udev.rules ]]; then
+    echo 'tss:x:59:59:tpm user:/dev/null:/sbin/nologin' >> "$sysroot"/etc/passwd
+    echo 'tss:!!:15587::::::' >> "$sysroot"/etc/shadow
+    echo 'tss:x:59:' >> "$sysroot"/etc/group
+    echo 'tss:!::' >> "$sysroot"/etc/gshadow
+fi
+
+#---------------
+# NetworkManager
+if [[ -d "$sysroot"/etc/NetworkManager ]]; then
+    mv "$sysroot"/etc/NetworkManager "$sysroot"/usr/share/factory/var/etc/
+    ln -fsnr "$sysroot"/var/etc/NetworkManager "$sysroot"/etc/NetworkManager
+    cat >> "$sysroot"/usr/lib/tmpfiles.d/NetworkManager.conf <<EOF
+d /var/lib/NetworkManager 0755 root root - -
+d /run/NetworkManager 0755 root root - -
+EOF
+    rm -fr "$sysroot"/etc/sysconfig/network-scripts
+    rm -fr "$sysroot"/usr/lib64/NetworkManager/*/libnm-settings-plugin-ifcfg-rh.so
+fi
+
+. "${BASEDIR}"/quirks/nss_db.sh
+
+#---------------
+# resolv.conf
+ln -fsrn "$sysroot"/run/NetworkManager/resolv.conf "$sysroot"/etc/resolv.conf
+echo 'f /run/NetworkManager/resolv.conf 0755 root root - ' >> "$sysroot"/usr/lib/tmpfiles.d/resolv.conf
+ln -sfrn "$sysroot"/var/etc/hostname "$sysroot"/etc/hostname
+echo "FedoraBook" > "$sysroot"/usr/share/factory/var/etc/hostname
+
+#---------------
+# vconsole.conf
+ln -fsnr "$sysroot"/var/etc/vconsole.conf "$sysroot"/etc/vconsole.conf
+echo -e 'FONT=latarcyrheb-sun16\nKEYMAP=us' > "$sysroot"/usr/share/factory/var/etc/vconsole.conf
+
+#---------------
+# locale.conf
+ln -fsnr "$sysroot"/var/etc/locale.conf "$sysroot"/etc/locale.conf
+echo 'LANG=en_US.UTF-8' > "$sysroot"/usr/share/factory/var/etc/locale.conf
+
+#---------------
+# udev dri/card0
+cp "${BASEDIR}"/systemd-udev-settle-dri.service "$sysroot"/usr/lib/systemd/system/
+ln -fsnr "$sysroot"/usr/lib/systemd/system/systemd-udev-settle-dri.service \
+   "$sysroot"/usr/lib/systemd/system/multi-user.target.wants/systemd-udev-settle-dri.service
+
+#---------------
+# Flathub
+if [[ -d "$sysroot"/usr/share/flatpak ]]; then
+    mkdir -p "$sysroot"/usr/share/factory/var/lib/
+    curl https://flathub.org/repo/flathub.flatpakrepo -o "$sysroot"/usr/share/flatpak/flathub.flatpakrepo
+    chroot "$sysroot" bash -c '/usr/bin/flatpak remote-add --if-not-exists flathub /usr/share/flatpak/flathub.flatpakrepo'
+fi
+
+#---------------
+# var
+rm -fr "$sysroot"/var/lib/rpm
+rm -fr "$sysroot"/var/lib/selinux
+rm -fr "$sysroot"/var/log/dnf*
+rm -fr "$sysroot"/var/cache/*/*
+rm -fr "$sysroot"/var/tmp/*
+rm -fr "$sysroot"/etc/systemd/system/network-online.target.wants
+mv "$sysroot"/lib/tmpfiles.d/var.conf "$sysroot"/lib/tmpfiles.d-var.conf
+chroot "$sysroot" bash -c 'for i in $(find -H /var -xdev -type d); do grep " $i " -r -q /lib/tmpfiles.d && ! grep " $i " -q /lib/tmpfiles.d-var.conf && rm -vfr --one-file-system "$i" ; done; :'
+cp -avxr "$sysroot"/var/* "$sysroot"/usr/share/factory/data/var/
+rm -fr "$sysroot"/usr/share/factory/var/{run,lock}
+
+chroot "$sysroot" bash -c 'for i in $(find -H /var -xdev -type d); do echo "C /data$i - - - - -"; done > /usr/lib/tmpfiles.d/var-quirk.conf; :'
+mv "$sysroot"/lib/tmpfiles.d-var.conf "$sysroot"/lib/tmpfiles.d/var.conf
+
+sed -i -e "s#VERSION_ID=.*#VERSION_ID=$VERSION_ID#" "$sysroot"/etc/os-release
+
+mv -v "$sysroot"/boot/*/*/initrd "$MY_TMPDIR"/
+mv -v "$sysroot"/lib/modules/*/vmlinuz "$MY_TMPDIR"/linux
+rm -fr "$sysroot"/{boot,root}
+ln -sfnr "$sysroot"/data/root "$sysroot"/root
+rm -fr "$sysroot"/etc/yum.repos.d/*
+mkdir "$sysroot"/efi
+rm -fr "$sysroot"/var/*
+rm -fr "$sysroot"/home/*
+rm -fr "$sysroot"/etc/selinux
+mkdir "$sysroot"/data
+
+for i in "$sysroot"/{dev,sys,proc,run}; do
+    [[ -d "$i" ]] && mountpoint -q "$i" && umount "$i"
+done
+
+
+# ------------------------------------------------------------------------------
+# sysroot
+mksquashfs "$MY_TMPDIR"/sysroot "$MY_TMPDIR"/root.squashfs.img \
+	   -noDataCompression -noFragmentCompression -noXattrCompression -noInodeCompression
+
+# ------------------------------------------------------------------------------
+# verity
+ROOT_HASH=$(veritysetup format "$MY_TMPDIR"/root.squashfs.img "$MY_TMPDIR"/root.verity.img |& tail -1 | { read a b c; echo $c; } )
+
+echo "$ROOT_HASH" > "$MY_TMPDIR"/root-hash.txt
+
+ROOT_UUID=${ROOT_HASH:32:8}-${ROOT_HASH:40:4}-${ROOT_HASH:44:4}-${ROOT_HASH:48:4}-${ROOT_HASH:52:12}
+HASH_UUID=${ROOT_HASH:0:8}-${ROOT_HASH:8:4}-${ROOT_HASH:12:4}-${ROOT_HASH:16:4}-${ROOT_HASH:20:12}
+
+# ------------------------------------------------------------------------------
+# make bootx64.efi
+echo -n "rd.shell=0 quiet video=efifb:nobgrt audit=0 selinux=0 roothash=$ROOT_HASH systemd.verity_root_data=PARTUUID=$ROOT_UUID systemd.verity_root_hash=PARTUUID=$HASH_UUID resume=PARTLABEL=swap raid=noautodetect" > "$MY_TMPDIR"/options.txt
+echo -n "$NAME $VERSION_ID" > "$MY_TMPDIR"/release.txt
+objcopy \
+    --add-section .release="$MY_TMPDIR"/release.txt --change-section-vma .release=0x20000 \
+    --add-section .cmdline="$MY_TMPDIR"/options.txt --change-section-vma .cmdline=0x30000 \
+    ${LOGO:+--add-section .splash="$LOGO" --change-section-vma .splash=0x40000} \
+    --add-section .linux="$MY_TMPDIR"/linux --change-section-vma .linux=0x2000000 \
+    --add-section .initrd="$MY_TMPDIR"/initrd --change-section-vma .initrd=0x3000000 \
+    "${BASEDIR}"/linuxx64.efi.stub "$MY_TMPDIR"/bootx64.efi
+
+
+mkdir -p "$OUTDIR"
+mv "$MY_TMPDIR"/root-hash.txt \
+   "$MY_TMPDIR"/bootx64.efi \
+   "$MY_TMPDIR"/root.squashfs.img \
+   "$MY_TMPDIR"/root.verity.img \
+   "$MY_TMPDIR"/release.txt \
+   "$MY_TMPDIR"/options.txt \
+   "$MY_TMPDIR"/linux \
+   "$MY_TMPDIR"/initrd \
+   "$OUTDIR"
