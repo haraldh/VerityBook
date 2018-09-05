@@ -6,6 +6,7 @@ WIP
 
 ```bash
 $ sudo ./prepare-root.sh \
+  --releasever 29 \
   --pkglist pkglist.txt \
   --excludelist excludelist.txt \
   --logo logo.bmp --name FEDORABOOK \
