@@ -87,7 +87,7 @@ $ sudo ./mkimage.sh <IMGDIR> /dev/disk/by-path/pci-…-usb…
 
 ## Install from USB stick
 
-*Warning*: This will wipe the entire target disk
+**Warning**: This will wipe the entire target disk
 
 - Enter BIOS
    * turn on UEFI boot
