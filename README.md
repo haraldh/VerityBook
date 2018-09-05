@@ -87,6 +87,8 @@ $ sudo ./mkimage.sh <IMGDIR> /dev/disk/by-path/pci-…-usb…
 
 ## Install from USB stick
 
+*Warning*: This will wipe the entire target disk
+
 - Enter BIOS
    * turn on UEFI boot
    * turn on TPM2
@@ -94,8 +96,7 @@ $ sudo ./mkimage.sh <IMGDIR> /dev/disk/by-path/pci-…-usb…
 - Select USB stick
 - Login (user: admin, pw: admin)
 - Start gnome-terminal
-- sudo
-- ```clonedisk <usb stick device> <harddisk device>```
+- ```$ sudo clonedisk <usb stick device> <harddisk device>```
 - reboot
 - remove stick
 
