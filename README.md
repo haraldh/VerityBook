@@ -69,8 +69,8 @@ $ sudo ./mkimage.sh <IMGDIR> /dev/disk/by-path/pci-…-usb…
 ## Install from USB stick
 
 - Enter BIOS
-   - turn on UEFI boot
-   - turn on TPM2
+   * turn on UEFI boot
+   * turn on TPM2
 - Enter BIOS boot menu
 - Select USB stick
 - Login (user: admin, pw: admin)
