@@ -41,6 +41,8 @@ This is WIP. Please test and report issues, comments or missing components on ht
 - add proper EFI boot manager entries for A and B
 - extend efi stub for recovery boot in the old image
 - signing tools
+- add admin LUKS key via [public key](https://blog.g3rt.nl/luks-smartcard-or-token.html)
+- sssd
 - firmware update
 - selinux?
 
