@@ -43,6 +43,7 @@ This is WIP. Please test and report issues, comments or missing components on ht
 - signing tools
 - add admin LUKS key via [public key](https://blog.g3rt.nl/luks-smartcard-or-token.html)
 - sssd
+- support more clevis pins and mixed pins
 - firmware update
 - selinux?
 
