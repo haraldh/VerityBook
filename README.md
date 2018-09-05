@@ -44,6 +44,13 @@ This is WIP. Please test and report issues, comments or missing components on ht
 - firmware update
 - selinux?
 
+## Complete / What works already?
+- boot from single efi binary
+- dm_verity + squashfs immutable, integrity checked root
+- passwd + shadow + group + gshadow decoupled from system in /var
+- bind LUKS2 with tpm2 to machine
+- /home and /var on single data partition
+
 ## Known Failures
 - gnome-software: can't update firmware repo
 - systemd: failed to umount /var
