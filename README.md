@@ -2,6 +2,25 @@
 
 WIP
 
+## Goals
+- secure boot to the login screen
+- ensured integrity to the login screen
+- encrypted volatile data
+- A/B boot switching for updates
+- Flatpak
+- basic desktop
+- optional: bind encrypted data partition to TPM2
+- optional: frequent reencryption of the data partition
+
+## Non-Goals
+- can't secure against someone writing anything to disk
+- can't secure against someone scraping secret keys from the kernel
+
+## TODO
+- merge mkimage.sh and clonedisk
+- update mechanism
+- signing tools
+
 ## Create
 
 ```bash
@@ -15,12 +34,12 @@ $ sudo ./prepare-root.sh \
 
 ## QEMU disk image
 ```bash
-$ sudo ./mkimage.sh <IMGDIR>  image.raw 
+$ sudo ./mkimage.sh <IMGDIR> image.raw 
 ```
 
 ## USB stick
 ```bash
-$ sudo ./mkimage.sh <IMGDIR>  /dev/disk/by-path/pci-…-usb…
+$ sudo ./mkimage.sh <IMGDIR> /dev/disk/by-path/pci-…-usb…
 ```
 
 ## Install from USB stick
