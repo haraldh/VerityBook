@@ -46,6 +46,7 @@ This is WIP. Please test and report issues, comments or missing components on ht
 
 ## Known Failures
 - gnome-software: can't update firmware repo
+- systemd: failed to umount /var
 
 ## Create
 
