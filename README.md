@@ -59,7 +59,7 @@ $ sudo ./prepare-root.sh \
   --outdir <IMGDIR>
 ```
 
-or download a prebuilt (image)[https://harald.fedorapeople.org/downloads/fedorabook.tgz],
+or download a prebuilt [image](https://harald.fedorapeople.org/downloads/fedorabook.tgz),
 unpack and use this as ```<IMGDIR>```.
 
 
