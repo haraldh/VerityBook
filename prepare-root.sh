@@ -207,7 +207,8 @@ chroot  "$sysroot" \
 	--install "clonedisk wipefs sfdisk dd mkfs.xfs mkswap chroot mountpoint mkdir stat openssl" \
 	--install "clevis clevis-luks-bind jose clevis-encrypt-tpm2 clevis-decrypt clevis-luks-unlock clevis-decrypt-tpm2"  \
 	--install "cryptsetup tail sort pwmake mktemp " \
-	--install "tpm2_createprimary tpm2_pcrlist tpm2_createpolicy tpm2_create tpm2_load tpm2_unseal tpm2_takeownership" \
+	--install "tpm2_pcrextend tpm2_createprimary tpm2_pcrlist tpm2_createpolicy" \
+	--install "tpm2_create tpm2_load tpm2_unseal tpm2_takeownership" \
 	--install "strace" \
 	--include /pre-pivot.sh /lib/dracut/hooks/pre-pivot/pre-pivot.sh \
 	--include /overlay / \
