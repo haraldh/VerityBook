@@ -58,10 +58,8 @@ if cryptsetup isLuks --type luks2 "$datadev"; then
 	    export TPM2TOOLS_DEVICE_FILE=/dev/tpmrm0
 	    
 	    if echo -n "zero key" | clevis-luks-bind -f -k - -d "$datadev" tpm2 '{"pcr_ids":"7"}'; then
-		echo -n "zero key" | cryptsetup luksRemoveKey "$datadev" /dev/stdin || die "Failed to remove key from LUKS"
 		clevis-luks-unlock -d "$datadev" -n "$luksname" || die "Failed to unlock $datadev"
 	    elif echo -n "zero key" | clevis-luks-bind -f -k - -d "$datadev" tpm2 '{"pcr_ids":"7","key":"rsa"}'; then
-		echo -n "zero key" | cryptsetup luksRemoveKey "$datadev" /dev/stdin || die "Failed to remove key from LUKS"
 		clevis-luks-unlock -d "$datadev" -n "$luksname" || die "Failed to unlock $datadev"
 	    else
 		warn "Failed to bind disk to TPM2"
