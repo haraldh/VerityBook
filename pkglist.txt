@@ -62,4 +62,4 @@ ca-certificates
 fedora-gpg-keys
 bind-utils
 bash-completion
-
+nss-mdns
