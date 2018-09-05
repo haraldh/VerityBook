@@ -28,7 +28,6 @@ case "$root" in
         rootok=1 ;;
 esac
 
-udevadm settle --exit-if-exists=/dev/tpmrm0
 udevadm settle --exit-if-exists="$root"
 
 unset FOUND
@@ -50,13 +49,15 @@ for datadev in $disk*; do
 done
 
 if cryptsetup isLuks --type luks2 "$datadev"; then
-    export TPM2TOOLS_TCTI_NAME=device
-    export TPM2TOOLS_DEVICE_FILE=/dev/tpmrm0
     luksname=luks-$(blkid -o value -s UUID "$datadev")
     mapdev=/dev/mapper/$luksname
 
     if ! [[ -b $mapdev ]]; then
 	if ! cryptsetup luksDump "$datadev" | grep -F -q clevis ; then
+	    udevadm settle --exit-if-exists=/dev/tpmrm0
+	    export TPM2TOOLS_TCTI_NAME=device
+	    export TPM2TOOLS_DEVICE_FILE=/dev/tpmrm0
+	    
 	    if echo -n "zero key" | clevis-luks-bind -f -k - -d "$datadev" tpm2 '{"pcr_ids":"7"}'; then
 		echo -n "zero key" | cryptsetup luksRemoveKey "$datadev" /dev/stdin || die "Failed to remove key from LUKS"
 		clevis-luks-unlock -d "$datadev" || die "Failed to unlock $datadev"
