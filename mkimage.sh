@@ -158,8 +158,7 @@ dd if="$SOURCE"/root.squashfs.img of=${DEV_PART}3 status=progress
 
 # ------------------------------------------------------------------------------
 # data
-echo -n "zero key" \
-    | cryptsetup luksFormat --type luks2 ${DEV_PART}4 /dev/stdin
+mkfs.xfs -L data ${DEV_PART}4
 
 # ------------------------------------------------------------------------------
 # DONE
