@@ -59,7 +59,6 @@ This is WIP. Please test and report issues, comments or missing components on ht
 - no kernel command line on DELL ( you need a newer systemd https://github.com/systemd/systemd/pull/10001 )
   cp linuxx64.efi.stub to this git repo dir from a compiled upstream systemd
 - gnome-software: can't update firmware repo
-- systemd: failed to umount /var
 
 ## Create
 

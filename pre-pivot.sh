@@ -47,10 +47,11 @@ for datadev in $disk*; do
 done
 
 if cryptsetup isLuks --type luks2 "$datadev"; then
-    luksname=luks-$(blkid -o value -s UUID "$datadev")
-    mapdev=/dev/mapper/$luksname
+    #luksname=luks-$(blkid -o value -s UUID "$datadev")
+    luksname=data
+    luksdev=/dev/mapper/$luksname
 
-    if ! [[ -b $mapdev ]]; then
+    if ! [[ -b $luksdev ]]; then
 	if ! cryptsetup luksDump "$datadev" | grep -F -q clevis ; then
 	    udevadm settle --exit-if-exists=/dev/tpmrm0
 	    export TPM2TOOLS_TCTI_NAME=device
@@ -58,27 +59,26 @@ if cryptsetup isLuks --type luks2 "$datadev"; then
 	    
 	    if echo -n "zero key" | clevis-luks-bind -f -k - -d "$datadev" tpm2 '{"pcr_ids":"7"}'; then
 		echo -n "zero key" | cryptsetup luksRemoveKey "$datadev" /dev/stdin || die "Failed to remove key from LUKS"
-		clevis-luks-unlock -d "$datadev" || die "Failed to unlock $datadev"
+		clevis-luks-unlock -d "$datadev" -n "$luksname" || die "Failed to unlock $datadev"
 	    elif echo -n "zero key" | clevis-luks-bind -f -k - -d "$datadev" tpm2 '{"pcr_ids":"7","key":"rsa"}'; then
 		echo -n "zero key" | cryptsetup luksRemoveKey "$datadev" /dev/stdin || die "Failed to remove key from LUKS"
-		clevis-luks-unlock -d "$datadev" || die "Failed to unlock $datadev"
+		clevis-luks-unlock -d "$datadev" -n "$luksname" || die "Failed to unlock $datadev"
 	    else
 		warn "Failed to bind disk to TPM2"
 		echo -n "zero key" | cryptsetup open --type luks2 "$datadev" $luksname --key-file /dev/stdin		
 	    fi
 	else
-	    clevis-luks-unlock -d "$datadev" || die "Failed to unlock $datadev"
+	    clevis-luks-unlock -d "$datadev" -n "$luksname" || die "Failed to unlock $datadev"
 	fi
     fi
-else
-    mapdev="$datadev"
+    datadev="$luksdev"
 fi
 
-if [[ $(blkid -o value -s TYPE "$mapdev") != "xfs" ]]; then
-    mkfs.xfs -f -L data "$mapdev"
+if [[ $(blkid -o value -s TYPE "$datadev") != "xfs" ]]; then
+    mkfs.xfs -f -L data "$datadev"
 fi
 
-mount $mapdev /sysroot/data || die "Failed to mount $mapdev"
+mount -o discard $datadev /sysroot/data || die "Failed to mount $datadev"
 
 [[ -d /sysroot/data/var  ]] || mkdir /sysroot/data/var
 [[ -d /sysroot/data/home ]] || mkdir /sysroot/data/home

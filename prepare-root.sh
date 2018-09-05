@@ -299,6 +299,12 @@ if [[ -d "$sysroot"/usr/share/flatpak ]]; then
     chroot "$sysroot" bash -c '/usr/bin/flatpak remote-add --if-not-exists flathub /usr/share/flatpak/flathub.flatpakrepo'
 fi
 
+cat >"$sysroot"/etc/fstab <<EOF
+LABEL=data /data xfs defaults,discard 0 0
+/data/var  /var  - bind 0 0
+/data/home /home - bind 0 0
+EOF
+
 #---------------
 # var
 rm -fr "$sysroot"/var/lib/rpm
