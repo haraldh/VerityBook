@@ -97,6 +97,23 @@ $ sudo ./mkimage.sh <IMGDIR> /dev/disk/by-path/pci-…-usb…
 - reboot
 - remove stick
 
+The first boot takes longer as the system tries to bind the LUKS to the TPM2 on the machine. It also populates /var with the missing directories.
+
+You can always clear the data partition via:
+```
+# wipefs --all --force /dev/<disk partition 7>
+```
+and then either make a xfs
+```
+# mkfs.xfs -L data /dev/<disk partition 7>
+```
+or luks
+```
+# echo -n "zero key" | cryptsetup luksFormat --type luks2 /dev/<disk partition 7> /dev/stdin
+```
+
+On the media created with mkimage.sh, this is partition number *4*.
+
 ## Post Boot
 
 ### Persistent journal
