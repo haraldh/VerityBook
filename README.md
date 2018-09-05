@@ -1,6 +1,7 @@
 # FedoraBook
 
 Let's put all the fancy features together, we developed in the last years:
+
 - Combined kernel+initramfs EFI binaries
 - Secure Boot
 - clevis with TPM2
@@ -8,6 +9,7 @@ Let's put all the fancy features together, we developed in the last years:
 - dm-verity + squashfs root
 - Flatpak
 - flickerless boot
+
 and build a Chromebook like Fedorabook, where you can install all software via Flatpak.
 
 This is WIP. Please test and report issues or comments on https://pagure.io/Fedorabook/issues
@@ -30,9 +32,9 @@ This is WIP. Please test and report issues or comments on https://pagure.io/Fedo
 ## TODO
 - merge mkimage.sh and clonedisk
 - change partition UUIDs for /data
-   - UUID for TPM LUKS
-   - UUID for LUKS
-   - UUID for unencrypted xfs
+   * UUID for TPM LUKS
+   * UUID for LUKS
+   * UUID for unencrypted xfs
 - update mechanism
 - add proper EFI boot manager entries for A and B
 - extend efi stub for recovery boot in the old image
