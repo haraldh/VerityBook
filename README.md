@@ -124,3 +124,5 @@ On the media created with mkimage.sh, this is partition number *4*.
 $ sudo mkdir /var/log/journal
 ```
 
+### LUKS
+Set a new luks password. Initial password is 'zero key'
