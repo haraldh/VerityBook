@@ -28,8 +28,6 @@ case "$root" in
         rootok=1 ;;
 esac
 
-udevadm settle --exit-if-exists="$root"
-
 unset FOUND
 for d in /dev/disk/by-path/*; do
     [[ $d -ef $root ]] || continue
