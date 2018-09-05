@@ -12,7 +12,7 @@ Let's put all the fancy features together, we developed in the last years:
 
 and build a Chromebook like Fedorabook, where you can install all software via Flatpak.
 
-This is WIP. Please test and report issues or comments on https://pagure.io/Fedorabook/issues
+This is WIP. Please test and report issues, comments or missing components on https://pagure.io/Fedorabook/issues
 
 ## Goals
 - secure boot to the login screen
@@ -35,6 +35,8 @@ This is WIP. Please test and report issues or comments on https://pagure.io/Fedo
    * UUID for TPM LUKS
    * UUID for LUKS
    * UUID for unencrypted xfs
+- ensure /data to be on same disk as root
+- add "load=<efipath>" to kernel command line via efi stub
 - update mechanism
 - add proper EFI boot manager entries for A and B
 - extend efi stub for recovery boot in the old image
