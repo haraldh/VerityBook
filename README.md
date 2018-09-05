@@ -31,6 +31,8 @@ This is WIP. Please test and report issues, comments or missing components on ht
 
 ## TODO
 - merge mkimage.sh and clonedisk
+- move all quirks from prepare-root.sh to quirks directory
+- source all quirks depending on package installation on command line options
 - change partition UUIDs for /data
    * UUID for TPM LUKS
    * UUID for LUKS
