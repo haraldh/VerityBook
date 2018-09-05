@@ -127,6 +127,10 @@ trap '
 # clean up after ourselves no matter how we die.
 trap 'exit 1;' SIGINT
 
+if ! [[ -f "${BASEDIR}"/linuxx64.efi.stub ]]; then
+    cp /lib/systemd/boot/efi/linuxx64.efi.stub "${BASEDIR}"/linuxx64.efi.stub
+fi
+
 readonly sysroot="${MY_TMPDIR}/sysroot"
 
 mkdir -p "$sysroot"/{dev,proc,sys,run}
