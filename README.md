@@ -45,6 +45,7 @@ This is WIP. Please test and report issues, comments or missing components on ht
 - sssd
 - support more clevis pins and mixed pins
 - firmware update
+- option to always clean data disk on boot
 - selinux?
 
 ## Complete / What works already?
