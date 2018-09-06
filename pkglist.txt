@@ -65,4 +65,4 @@ nss-mdns
 @development-tools
 @development-libs
 @c-development
-
+man-db
