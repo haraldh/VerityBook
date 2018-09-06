@@ -10,7 +10,6 @@ NetworkManager-vpnc
 NetworkManager-vpnc-gnome
 NetworkManager-wifi
 firefox
-emacs
 vim-enhanced
 pigz
 flatpak
@@ -63,3 +62,7 @@ fedora-gpg-keys
 bind-utils
 bash-completion
 nss-mdns
+@development-tools
+@development-libs
+@c-development
+

@@ -4,7 +4,6 @@ grubby
 grub*
 plymouth
 device-mapper-multipath
-libvirt-daemon
 selinux-policy-targeted
 libselinux-utils
-
+httpd

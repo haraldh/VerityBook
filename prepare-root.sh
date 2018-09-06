@@ -44,6 +44,7 @@ fi
 eval set -- "$TEMP"
 unset TEMP
 . /etc/os-release
+unset NAME
 
 while true; do
     case "$1" in
@@ -97,8 +98,8 @@ done
 [[ $EXCLUDELIST ]] || [[ -f excludelist.txt ]] && EXCLUDELIST=$(<excludelist.txt)
 NAME=${NAME:-"FedoraBook"}
 RELEASEVER=${RELEASEVER:-$VERSION_ID}
-OUTDIR=${OUTDIR:-"${CURDIR}/${NAME}-${VERSION_ID}"}
 VERSION_ID="${RELEASEVER}.$(date -u +'%Y%m%d%H%M%S')"
+OUTDIR=${OUTDIR:-"${CURDIR}/${NAME}-${VERSION_ID}"}
 
 [[ $TMPDIR ]] || TMPDIR=/var/tmp
 readonly TMPDIR="$(realpath -e "$TMPDIR")"
@@ -142,6 +143,13 @@ mount -t devtmpfs devtmpfs "$sysroot/dev"
 mkdir -p "$sysroot"/var/cache/dnf
 mount --bind /var/cache/dnf "$sysroot"/var/cache/dnf
 
+# We need to preserve old uid/gid
+mkdir -p "$sysroot"/etc
+for i in passwd shadow group gshadow subuid subgid; do
+    [[ -e "${BASEDIR}/${NAME}/$i" ]] || continue
+    cp "${BASEDIR}/${NAME}/$i" "$sysroot"/etc/"$i"
+done
+
 dnf -v --nogpgcheck --installroot "$sysroot"/ --releasever "$RELEASEVER" --disablerepo='*' \
     --enablerepo=fedora \
     ${WITH_UPDATES:+--enablerepo=updates} \
@@ -179,9 +187,18 @@ dnf -v --nogpgcheck --installroot "$sysroot"/ --releasever "$RELEASEVER" --disab
     tpm2-tss \
     ncurses-base \
     dbus-broker \
+    tar \
+    gzip \
     $PKGLIST
 
+# We need to preserve old uid/gid
+mkdir -p ${BASEDIR}/${NAME}
+for i in passwd shadow group gshadow subuid subgid; do 
+    cp "$sysroot"/etc/"$i" ${BASEDIR}/${NAME}
+done
+
 cp "$CURDIR/clonedisk.sh" "$sysroot"/usr/bin/clonedisk
+cp "$CURDIR/update.sh" "$sysroot"/usr/bin/update
 
 rpm --root "$sysroot" -qa | sort > "$sysroot"/usr/rpm-list.txt
 mkdir -p "$sysroot"/overlay/efi
@@ -243,6 +260,9 @@ ln -fsnr "$sysroot"/usr/lib/systemd/system/dbus-broker.service "$sysroot"/etc/sy
 if [[ -d "$sysroot"/etc/ssh ]]; then
     mv "$sysroot"/etc/ssh "$sysroot"/usr/share/factory/var/etc/ssh
     ln -sfnr "$sysroot"/var/etc/ssh "$sysroot"/etc/ssh
+    cat >> "$sysroot"/usr/lib/tmpfiles.d/ssh.conf <<EOF
+C /var/etc/ssh - - - - -
+EOF
 fi
 
 #---------------
@@ -265,6 +285,16 @@ d /run/NetworkManager 0755 root root - -
 EOF
     rm -fr "$sysroot"/etc/sysconfig/network-scripts
     rm -fr "$sysroot"/usr/lib64/NetworkManager/*/libnm-settings-plugin-ifcfg-rh.so
+fi
+
+#---------------
+# libvirt
+if [[ -d "$sysroot"/etc/libvirt ]]; then
+    mv "$sysroot"/etc/libvirt "$sysroot"/usr/share/factory/var/etc/
+    ln -fsnr "$sysroot"/var/etc/libvirt "$sysroot"/etc/libvirt
+    cat >> "$sysroot"/usr/lib/tmpfiles.d/libvirt.conf <<EOF
+C /var/etc/libvirt - - - - -
+EOF
 fi
 
 . "${BASEDIR}"/quirks/nss_db.sh
@@ -300,6 +330,13 @@ if [[ -d "$sysroot"/usr/share/flatpak ]]; then
     chroot "$sysroot" bash -c '/usr/bin/flatpak remote-add --if-not-exists flathub /usr/share/flatpak/flathub.flatpakrepo'
 fi
 
+#---------------
+# inotify
+mkdir -p "$sysroot"/etc/sysctl.d
+cat > "$sysroot"/etc/sysctl.d/inotify.conf <<EOF
+fs.inotify.max_user_watches = $((8192*10))
+EOF
+
 cat >"$sysroot"/etc/fstab <<EOF
 LABEL=data /data xfs defaults,discard 0 0
 /data/var  /var  - bind 0 0
@@ -323,6 +360,7 @@ chroot "$sysroot" bash -c 'for i in $(find -H /var -xdev -type d); do echo "C /d
 mv "$sysroot"/lib/tmpfiles.d-var.conf "$sysroot"/lib/tmpfiles.d/var.conf
 
 sed -i -e "s#VERSION_ID=.*#VERSION_ID=$VERSION_ID#" "$sysroot"/etc/os-release
+sed -i -e "s#NAME=.*#NAME=$NAME#" "$sysroot"/etc/os-release
 
 mv -v "$sysroot"/boot/*/*/initrd "$MY_TMPDIR"/
 mv -v "$sysroot"/lib/modules/*/vmlinuz "$MY_TMPDIR"/linux
@@ -357,7 +395,7 @@ HASH_UUID=${ROOT_HASH:0:8}-${ROOT_HASH:8:4}-${ROOT_HASH:12:4}-${ROOT_HASH:16:4}-
 # ------------------------------------------------------------------------------
 # make bootx64.efi
 echo -n "rd.shell=0 quiet video=efifb:nobgrt audit=0 selinux=0 roothash=$ROOT_HASH systemd.verity_root_data=PARTUUID=$ROOT_UUID systemd.verity_root_hash=PARTUUID=$HASH_UUID resume=PARTLABEL=swap raid=noautodetect" > "$MY_TMPDIR"/options.txt
-echo -n "$NAME $VERSION_ID" > "$MY_TMPDIR"/release.txt
+echo -n "${NAME}-${VERSION_ID}" > "$MY_TMPDIR"/release.txt
 objcopy \
     --add-section .release="$MY_TMPDIR"/release.txt --change-section-vma .release=0x20000 \
     --add-section .cmdline="$MY_TMPDIR"/options.txt --change-section-vma .cmdline=0x30000 \
@@ -377,3 +415,6 @@ mv "$MY_TMPDIR"/root-hash.txt \
    "$MY_TMPDIR"/linux \
    "$MY_TMPDIR"/initrd \
    "$OUTDIR"
+
+tar cf - -C "${OUTDIR%/*}" "${OUTDIR##*/}" | pigz -c > "$OUTDIR".tgz
+echo "$ROOT_HASH ${NAME}-${VERSION_ID}" > "${OUTDIR%/*}/${NAME}-latest.txt"

@@ -1,4 +1,3 @@
-
 sed -i -e 's#files#files db#g' "$sysroot"/etc/nsswitch.conf
 mkdir -p "$sysroot"/usr/db
 sed -i -e 's#/var/db#/usr/db#g' "$sysroot"/lib64/libnss_db-2*.so "$sysroot"/var/db/Makefile
@@ -22,7 +21,7 @@ mv "$sysroot"/etc/passwd "$sysroot"/etc/sub{u,g}id "$sysroot"/etc/shadow "$sysro
 sed -i -e 's!^# directory = /etc!directory = /var!g' "$sysroot"/etc/libuser.conf
 
 for i in passwd shadow group gshadow .pwd.lock subuid subgid; do 
-    ln -sfnr "$sysroot"/var/"$i" "$sysroot"/etc/"$i" 
+    ln -sfnr "$sysroot"/var/"$i" "$sysroot"/etc/"$i"
 done
 
 sed -i -e 's#/etc/passwd#/var/passwd#g;s#/etc/npasswd#/var/npasswd#g' "$sysroot"/usr/lib64/security/pam_unix.so

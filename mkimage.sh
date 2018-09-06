@@ -17,6 +17,7 @@ Usage: $PROGNAME [OPTION]
   --crypt                Use Luks2 to encrypt the data partition (default PW: 1)
   --crypttpm2            as --crypt, but additionally auto-open with the use of a TPM2
   --simple               do not use dual-boot layout (e.g. for USB install media)
+  --update               do not clear the data partition
 EOF
 }
 
@@ -24,6 +25,8 @@ TEMP=$(
     getopt -o '' \
         --long crypt \
         --long crypttpm2 \
+	--long simple \
+	--long update \
 	--long help \
         -- "$@"
     )
@@ -45,6 +48,14 @@ while true; do
             ;;
         '--crypttpm2')
 	    USE_TPM="y"
+            shift 1; continue
+            ;;
+        '--simple')
+	    SIMPLE="y"
+            shift 1; continue
+            ;;
+        '--update')
+	    UPDATE="y"
             shift 1; continue
             ;;
         '--help')
@@ -109,8 +120,10 @@ HASH_UUID=${ROOT_HASH:0:8}-${ROOT_HASH:8:4}-${ROOT_HASH:12:4}-${ROOT_HASH:16:4}-
 
 # create GPT table with EFI System Partition
 if ! [[ -b "${IMAGE}" ]]; then
-    rm -f "${IMAGE}"
-    dd if=/dev/null of="${IMAGE}" bs=1MiB seek=$((15*1024)) count=1
+    if ! [[ $UPDATE ]]; then
+        rm -f "${IMAGE}"
+        dd if=/dev/null of="${IMAGE}" bs=1MiB seek=$((15*1024)) count=1
+    fi
     readonly DEV=$(losetup --show -f -P "${IMAGE}")
     readonly DEV_PART=${DEV}p
 else
@@ -118,13 +131,16 @@ else
 	umount "$i" || :
     done
 
-    wipefs --force --all "${IMAGE}"
+    if ! [[ $UPDATE ]]; then
+        wipefs --force --all "${IMAGE}"
+    fi
     readonly DEV="${IMAGE}"
     readonly DEV_PART="${IMAGE}"
 fi
 
 udevadm settle
-sfdisk "${DEV}" << EOF
+if ! [[ $UPDATE ]]; then
+    sfdisk "${DEV}" << EOF
 label: gpt
 	    size=512MiB,  type=c12a7328-f81f-11d2-ba4b-00a0c93ec93b, name="ESP System Partition"
             size=64MiB,   type=2c7357ed-ebd2-46d9-aec1-23d437ec2bf5, name="ver1", uuid=$HASH_UUID
@@ -132,15 +148,21 @@ label: gpt
                           type=3b8f8425-20e0-4f3b-907f-1a25a76f98e9, name="data"
 EOF
 
-udevadm settle
-for i in 1 2 3 4; do
-    wipefs --force --all ${DEV_PART}${i}
-done
-udevadm settle
+    udevadm settle
+    for i in 1 2 3 4; do
+        wipefs --force --all ${DEV_PART}${i}
+    done
+    udevadm settle
+else
+    sfdisk --part-uuid ${DEV} 2 ${HASH_UUID}
+    sfdisk --part-uuid ${DEV} 3 ${ROOT_UUID}
+fi
 
 # ------------------------------------------------------------------------------
 # ESP
-mkfs.fat -nEFI -F32 ${DEV_PART}1
+if ! [[ $UPDATE ]]; then
+    mkfs.fat -nEFI -F32 ${DEV_PART}1
+fi
 mkdir "$MY_TMPDIR"/boot
 mount ${DEV_PART}1 "$MY_TMPDIR"/boot
 
@@ -158,8 +180,9 @@ dd if="$SOURCE"/root.squashfs.img of=${DEV_PART}3 status=progress
 
 # ------------------------------------------------------------------------------
 # data
-mkfs.xfs -L data ${DEV_PART}4
-
+if ! [[ $UPDATE ]]; then
+    mkfs.xfs -L data ${DEV_PART}4
+fi
 # ------------------------------------------------------------------------------
 # DONE
 
