@@ -7,14 +7,15 @@ Usage: $PROGNAME [OPTION]
 
 Creates a directory with a readonly root on squashfs, a dm_verity file and an EFI executable
 
-  -h, --help             Display this help
-  -p, --pkglist FILE     The packages to install read from FILE (default: pkglist.txt)
-  -e, --excludelist FILE The packages to install read from FILE (default: excludelist.txt)
-  -r, --releasever NUM   Used Fedora release version NUM (default: $VERSION_ID)
-  -o, --outdir DIR       Creates DIR and puts all files in there (default: NAME-NUM-DATE)
-  -n, --name NAME        The NAME of the product (default: FedoraBook)
-  -l, --logo FILE        Uses the .bmp FILE to display as a splash screen (default: logo.bmp)
-  --noupdate             Do not install from Fedora Updates
+  --help             Display this help
+  --pkglist FILE     The packages to install read from FILE (default: pkglist.txt)
+  --excludelist FILE The packages to install read from FILE (default: excludelist.txt)
+  --releasever NUM   Used Fedora release version NUM (default: $VERSION_ID)
+  --outdir DIR       Creates DIR and puts all files in there (default: NAME-NUM-DATE)
+  --name NAME        The NAME of the product (default: FedoraBook)
+  --logo FILE        Uses the .bmp FILE to display as a splash screen (default: logo.bmp)
+  --gpgkey FILE      Use FILE as the signing gpg key
+  --noupdate         Do not install from Fedora Updates
 EOF
 }
 
@@ -25,7 +26,7 @@ BASEDIR=${0%/*}
 WITH_UPDATES=1
 
 TEMP=$(
-    getopt -o 'p:o:n:r:l:e:' \
+    getopt -o '' \
         --long pkglist: \
         --long excludelist: \
         --long outdir: \
@@ -48,7 +49,7 @@ unset NAME
 
 while true; do
     case "$1" in
-        '-p'|'--pkglist')
+        '--pkglist')
             if [[ -f $2 ]]; then
                 PKGLIST=$(<$2)
             else
@@ -56,7 +57,7 @@ while true; do
             fi
             shift 2; continue
             ;;
-        '-e'|'--excludelist')
+        '--excludelist')
             if [[ -f $2 ]]; then
                 EXCLUDELIST=$(<$2)
             else
@@ -64,20 +65,24 @@ while true; do
             fi
             shift 2; continue
             ;;
-        '-o'|'--outdir')
+        '--outdir')
             OUTDIR="$2"
             shift 2; continue
             ;;
-        '-n'|'--name')
+        '--name')
             NAME="$2"
             shift 2; continue
             ;;
-        '-r'|'--releasever')
+        '--releasever')
             RELEASEVER="$2"
             shift 2; continue
             ;;
-        '-l'|'--logo')
+        '--logo')
             LOGO="$2"
+            shift 2; continue
+            ;;
+        '--gpgkey')
+            GPGKEY="$2"
             shift 2; continue
             ;;
         '--noupdates')
@@ -100,6 +105,7 @@ NAME=${NAME:-"FedoraBook"}
 RELEASEVER=${RELEASEVER:-$VERSION_ID}
 VERSION_ID="${RELEASEVER}.$(date -u +'%Y%m%d%H%M%S')"
 OUTDIR=${OUTDIR:-"${CURDIR}/${NAME}-${VERSION_ID}"}
+GPGKEY=${GPGKEY:-${NAME}.gpg}
 
 [[ $TMPDIR ]] || TMPDIR=/var/tmp
 readonly TMPDIR="$(realpath -e "$TMPDIR")"
@@ -168,6 +174,7 @@ dnf -v --nogpgcheck --installroot "$sysroot"/ --releasever "$RELEASEVER" --disab
     xfsprogs \
     pciutils \
     microcode_ctl \
+    nss-altfiles \
     nss_db \
     keyutils \
     make \
@@ -189,16 +196,34 @@ dnf -v --nogpgcheck --installroot "$sysroot"/ --releasever "$RELEASEVER" --disab
     dbus-broker \
     tar \
     gzip \
+    p11-kit \
+    efibootmgr \
+    jq \
+    gnupg2 \
     $PKGLIST
+
+for i in passwd shadow group gshadow subuid subgid; do
+    [[ -e "$sysroot"/etc/${i}.rpmnew ]] || continue
+    while read line || [[ $line ]]; do
+        IFS=: read user _ <<<$line
+        grep -E -q "^$user:" "$sysroot"/etc/${i} && continue
+        echo "$line" >> "$sysroot"/etc/${i}
+    done <"$sysroot"/etc/${i}.rpmnew
+done
+
+find "$sysroot" -name '*.rpmnew' -print0 | xargs -0 rm -fv
 
 # We need to preserve old uid/gid
 mkdir -p ${BASEDIR}/${NAME}
-for i in passwd shadow group gshadow subuid subgid; do 
+for i in passwd shadow group gshadow subuid subgid; do
     cp "$sysroot"/etc/"$i" ${BASEDIR}/${NAME}
 done
 
 cp "$CURDIR/clonedisk.sh" "$sysroot"/usr/bin/clonedisk
 cp "$CURDIR/update.sh" "$sysroot"/usr/bin/update
+cp "$CURDIR/update.sh" "$sysroot"/usr/bin/update
+mkdir -p "$sysroot"/etc/pki/${NAME}
+cp "${CURDIR}/${GPGKEY}" "$sysroot"/etc/pki/${NAME}/GPG-KEY
 
 rpm --root "$sysroot" -qa | sort > "$sysroot"/usr/rpm-list.txt
 mkdir -p "$sysroot"/overlay/efi
@@ -218,12 +243,12 @@ chroot  "$sysroot" \
 	dracut -N --kver $KVER --force \
 	--filesystems "squashfs vfat xfs" \
 	--add-drivers "=drivers/char/tpm" \
-	-m "bash systemd systemd-initrd modsign crypt dm kernel-modules qemu rootfs-block udev-rules dracut-systemd base fs-lib shutdown terminfo" \
+	-m "bash systemd systemd-initrd modsign crypt dm kernel-modules qemu rootfs-block udev-rules dracut-systemd base fs-lib shutdown terminfo resume" \
 	--install /usr/lib/systemd/systemd-veritysetup \
 	--install /usr/lib/systemd/system-generators/systemd-veritysetup-generator \
 	--install "clonedisk wipefs sfdisk dd mkfs.xfs mkswap chroot mountpoint mkdir stat openssl" \
 	--install "clevis clevis-luks-bind jose clevis-encrypt-tpm2 clevis-decrypt clevis-luks-unlock clevis-decrypt-tpm2"  \
-	--install "cryptsetup tail sort pwmake mktemp " \
+	--install "cryptsetup tail sort pwmake mktemp swapon" \
 	--install "tpm2_pcrextend tpm2_createprimary tpm2_pcrlist tpm2_createpolicy" \
 	--install "tpm2_create tpm2_load tpm2_unseal tpm2_takeownership" \
 	--install "strace" \
@@ -239,7 +264,6 @@ chroot  "$sysroot" \
 	--install /usr/lib/systemd/system/basic.target.wants/rngd.service
 
 rm "$sysroot"/pre-pivot.sh
-#bash -i
 
 umount "$sysroot"/var/cache/dnf
 
@@ -297,24 +321,69 @@ C /var/etc/libvirt - - - - -
 EOF
 fi
 
-. "${BASEDIR}"/quirks/nss_db.sh
+. "${BASEDIR}"/quirks/nss.sh
 
 #---------------
 # resolv.conf
 ln -fsrn "$sysroot"/run/NetworkManager/resolv.conf "$sysroot"/etc/resolv.conf
 echo 'f /run/NetworkManager/resolv.conf 0755 root root - ' >> "$sysroot"/usr/lib/tmpfiles.d/resolv.conf
-ln -sfrn "$sysroot"/var/etc/hostname "$sysroot"/etc/hostname
-echo "FedoraBook" > "$sysroot"/usr/share/factory/var/etc/hostname
+
+#---------------
+# hostname
+ln -sfrn "$sysroot"/var/hostname "$sysroot"/etc/hostname
+echo "FedoraBook" > "$sysroot"/usr/share/factory/var/hostname
 
 #---------------
 # vconsole.conf
-ln -fsnr "$sysroot"/var/etc/vconsole.conf "$sysroot"/etc/vconsole.conf
-echo -e 'FONT=latarcyrheb-sun16\nKEYMAP=us' > "$sysroot"/usr/share/factory/var/etc/vconsole.conf
+ln -fsnr "$sysroot"/var/vconsole.conf "$sysroot"/etc/vconsole.conf
+echo -e 'FONT=latarcyrheb-sun16\nKEYMAP=us' > "$sysroot"/usr/share/factory/var/vconsole.conf
 
 #---------------
 # locale.conf
-ln -fsnr "$sysroot"/var/etc/locale.conf "$sysroot"/etc/locale.conf
-echo 'LANG=en_US.UTF-8' > "$sysroot"/usr/share/factory/var/etc/locale.conf
+ln -fsnr "$sysroot"/var/locale.conf "$sysroot"/etc/locale.conf
+echo 'LANG=en_US.UTF-8' > "$sysroot"/usr/share/factory/var/locale.conf
+
+#---------------
+# localtime
+mv "$sysroot"/etc/localtime "$sysroot"/usr/share/factory/var/localtime
+ln -fsnr "$sysroot"/var/localtime "$sysroot"/etc/localtime
+
+#---------------
+# adjtime
+mv "$sysroot"/etc/adjtime "$sysroot"/usr/share/factory/var/adjtime
+ln -fsnr "$sysroot"/var/adjtime "$sysroot"/etc/adjtime
+
+sed -i -e 's#/etc/locale.conf#/var/locale.conf#g;s#/etc/vconsole.conf#/var/vconsole.conf#g' "$sysroot"/usr/lib/systemd/systemd-localed
+sed -i -e 's#/etc/adjtime#/var/adjtime#g;s#/etc/localtime#/var/localtime#g' "$sysroot"/usr/lib/systemd/systemd-timedated
+
+sed -i -e 's#ReadWritePaths=/etc#ReadWritePaths=/var#g' /lib/systemd/system/systemd-localed.service
+sed -i -e 's#ReadWritePaths=/etc#ReadWritePaths=/var#g' /lib/systemd/system/systemd-timedated.service
+
+cat >> "$sysroot"/usr/lib/tmpfiles.d/00-basics.conf <<EOF
+C /var/hostname - - - - -
+C /var/vconsole.conf - - - - -
+C /var/locale.conf - - - - -
+C /var/localtime - - - - -
+C /var/adjtime - - - - -
+EOF
+
+
+#---------------
+# X11
+if [[ -d "$sysroot"/etc/X11/xorg.conf.d ]]; then
+    mkdir -p "$sysroot"/usr/share/factory/var/etc
+    mv "$sysroot"/etc/X11 "$sysroot"/usr/share/factory/var/etc/X11
+    ln -fsnr "$sysroot"/var/etc/X11 "$sysroot"/etc/X11
+    cat >> "$sysroot"/usr/lib/tmpfiles.d/X11.conf <<EOF
+C /var/etc/X11 - - - - -
+EOF
+fi
+
+#---------------
+# autofs
+if [[ -f "$sysroot"/etc/autofs.conf ]]; then
+    mkdir -p "$sysroot"/net
+fi
 
 #---------------
 # udev dri/card0
@@ -394,7 +463,7 @@ HASH_UUID=${ROOT_HASH:0:8}-${ROOT_HASH:8:4}-${ROOT_HASH:12:4}-${ROOT_HASH:16:4}-
 
 # ------------------------------------------------------------------------------
 # make bootx64.efi
-echo -n "rd.shell=0 quiet video=efifb:nobgrt audit=0 selinux=0 roothash=$ROOT_HASH systemd.verity_root_data=PARTUUID=$ROOT_UUID systemd.verity_root_hash=PARTUUID=$HASH_UUID resume=PARTLABEL=swap raid=noautodetect" > "$MY_TMPDIR"/options.txt
+echo -n "rd.shell=0 quiet video=efifb:nobgrt audit=0 selinux=0 roothash=$ROOT_HASH systemd.verity_root_data=PARTUUID=$ROOT_UUID systemd.verity_root_hash=PARTUUID=$HASH_UUID raid=noautodetect" > "$MY_TMPDIR"/options.txt
 echo -n "${NAME}-${VERSION_ID}" > "$MY_TMPDIR"/release.txt
 objcopy \
     --add-section .release="$MY_TMPDIR"/release.txt --change-section-vma .release=0x20000 \
@@ -416,5 +485,14 @@ mv "$MY_TMPDIR"/root-hash.txt \
    "$MY_TMPDIR"/initrd \
    "$OUTDIR"
 
-tar cf - -C "${OUTDIR%/*}" "${OUTDIR##*/}" | pigz -c > "$OUTDIR".tgz
-echo "$ROOT_HASH ${NAME}-${VERSION_ID}" > "${OUTDIR%/*}/${NAME}-latest.txt"
+chown -R "$USER" "$OUTDIR"
+
+cat > "${OUTDIR%/*}/${NAME}-latest.json" <<EOF
+{
+        "roothash": "$ROOT_HASH",
+        "name" : "${NAME}",
+        "version" : "${VERSION_ID}"
+}
+EOF
+
+chown "$USER" "${OUTDIR%/*}/${NAME}-latest.json"

@@ -66,3 +66,7 @@ nss-mdns
 @development-libs
 @c-development
 man-db
+nautilus
+rpcbind
+nfs-utils
+autofs

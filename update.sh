@@ -45,29 +45,33 @@ fi
 mkdir -p /var/cache/${NAME}
 cd /var/cache/${NAME}
 
-curl ${BASEURL}/${NAME}-latest.txt --output ${NAME}-latest.txt
+curl ${BASEURL}/${NAME}-latest.json --output ${NAME}-latest.json
 
-RELEASE=$(read a b <${NAME}-latest.txt ; echo -n $b)
-ROOT_HASH=$(read a b <${NAME}-latest.txt; echo -n $a)
+IMAGE="$(jq -r '.name' ${NAME}-latest.json)-$(jq -r '.version' ${NAME}-latest.json)"
+ROOT_HASH=$(jq -r '.roothash' ${NAME}-latest.json)
 
-ROOT_UUID=${ROOT_HASH:32:8}-${ROOT_HASH:40:4}-${ROOT_HASH:44:4}-${ROOT_HASH:48:4}-${ROOT_HASH:52:12}
-HASH_UUID=${ROOT_HASH:0:8}-${ROOT_HASH:8:4}-${ROOT_HASH:12:4}-${ROOT_HASH:16:4}-${ROOT_HASH:20:12}
-            
-if [[ $CURRENT_ROOT_HASH == $ROOT_HASH ]] || [[ ${NAME}-${VERSION_ID} == $RELEASE ]]; then
+if [[ $CURRENT_ROOT_HASH == $ROOT_HASH ]]; then
     echo "Already up2date"
     exit 1
 fi
 
-curl ${BASEURL}/${RELEASE}.tgz | tar xzf -
+[[ -d ${IMAGE} ]] || curl ${BASEURL}/${IMAGE}.tgz | tar xzf -
 
-[[ -d ${RELEASE} ]]
+[[ -d ${IMAGE} ]]
 
-cd ${RELEASE}
+cd ${IMAGE}
+
+# check integrity
+gpg2 --no-default-keyring --keyring /etc/pki/${NAME}/GPG-KEY --verify sha512sum.txt.sig sha512sum.txt
+sha512sum -c sha512sum.txt
 
 dd status=progress if=root.verity.img   of=/dev/disk/by-partlabel/ver${NEW_ROOT_NUM}
 dd status=progress if=root.squashfs.img of=/dev/disk/by-partlabel/root${NEW_ROOT_NUM}
 
 # set the new partition uuids
+ROOT_UUID=${ROOT_HASH:32:8}-${ROOT_HASH:40:4}-${ROOT_HASH:44:4}-${ROOT_HASH:48:4}-${ROOT_HASH:52:12}
+HASH_UUID=${ROOT_HASH:0:8}-${ROOT_HASH:8:4}-${ROOT_HASH:12:4}-${ROOT_HASH:16:4}-${ROOT_HASH:20:12}
+            
 sfdisk --part-uuid ${ROOT_DEV} ${VER_PARTNO} ${HASH_UUID}
 sfdisk --part-uuid ${ROOT_DEV} ${ROOT_PARTNO} ${ROOT_UUID}
 
@@ -77,4 +81,4 @@ cp bootx64.efi /efi/EFI/${NAME}/${NEW_ROOT_NUM}.efi
 
 ## unless proper boot entries set, just force copy to default boot loader
 cp bootx64.efi /efi/EFI/Boot/new_bootx64.efi
-mv --backup=numbered /efi/EFI/Boot/new_bootx64.efi /efi/EFI/Boot/bootx64.efi
+mv --backup=simple /efi/EFI/Boot/new_bootx64.efi /efi/EFI/Boot/bootx64.efi

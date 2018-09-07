@@ -107,18 +107,21 @@ fi
 
 if ! [[ $UPDATE ]]; then
 
+    udevadm settle
     wipefs --all "$OUT"
 
+    udevadm settle
     sfdisk -W always -w always "$OUT" << EOF
 label: gpt
 	    size=512MiB,  type=c12a7328-f81f-11d2-ba4b-00a0c93ec93b, name="ESP System Partition"
-            size=256M,    type=2c7357ed-ebd2-46d9-aec1-23d437ec2bf5, name="ver1",   uuid=$(blkid -o value -s PARTUUID ${IN}2)
+            size=64M,    type=2c7357ed-ebd2-46d9-aec1-23d437ec2bf5, name="ver1",   uuid=$(blkid -o value -s PARTUUID ${IN}2)
             size=4GiB,    type=4F68BCE3-E8CD-4DB1-96E7-FBCAF984B709, name="root1",  uuid=$(blkid -o value -s PARTUUID ${IN}3)
-            size=256M,    type=2c7357ed-ebd2-46d9-aec1-23d437ec2bf5, name="ver2"
+            size=64M,    type=2c7357ed-ebd2-46d9-aec1-23d437ec2bf5, name="ver2"
             size=4GiB,    type=4F68BCE3-E8CD-4DB1-96E7-FBCAF984B709, name="root2"
-            size=${mem}GiB,  type=0657fd6d-a4ab-43c4-84e5-0933c84b4f4f, name="swap"
+            size=${mem}GiB,  type=0657fd6d-a4ab-43c4-84e5-0933c84b4f4e, name="swap"
             type=3b8f8425-20e0-4f3b-907f-1a25a76f98e9, name="data"
 EOF
+    udevadm settle
 fi
 
 OUT_DEV=$OUT
@@ -136,9 +139,11 @@ for i in 1 2 3; do
 done
 
 if ! [[ $UPDATE ]]; then
+    swapoff ${OUT}6 || :
     # ------------------------------------------------------------------------------
     # swap
-    mkswap -L swap ${OUT}6
+    echo -n "zero key" \
+        | cryptsetup luksFormat --type luks2 ${OUT}6 /dev/stdin
 
     # ------------------------------------------------------------------------------
     # data

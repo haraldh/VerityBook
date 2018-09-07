@@ -3,7 +3,7 @@ systemd-bootchart
 grubby
 grub*
 plymouth
-device-mapper-multipath
 selinux-policy-targeted
 libselinux-utils
 httpd
+gnome-boxes
