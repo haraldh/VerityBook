@@ -292,6 +292,15 @@ mkdir -p "$sysroot"/usr/share/factory/{var/etc,home}
 
 chroot "$sysroot" update-ca-trust
 
+#---------------
+# tpm2-tss
+if [[ -f "$sysroot"/usr/lib/udev/rules.d/60-tpm-udev.rules ]]; then
+    echo 'tss:x:59:59:tpm user:/dev/null:/sbin/nologin' >> "$sysroot"/etc/passwd
+    echo 'tss:!!:15587::::::' >> "$sysroot"/etc/shadow
+    echo 'tss:x:59:' >> "$sysroot"/etc/group
+    echo 'tss:!::' >> "$sysroot"/etc/gshadow
+fi
+
 . "${BASEDIR}"/quirks/nss.sh
 
 for q in "${QUIRKS[@]}"; do 
@@ -314,15 +323,6 @@ if [[ -d "$sysroot"/etc/ssh ]]; then
     cat >> "$sysroot"/usr/lib/tmpfiles.d/ssh.conf <<EOF
 C /var/etc/ssh - - - - -
 EOF
-fi
-
-#---------------
-# tpm2-tss 
-if [[ -f "$sysroot"/usr/lib/udev/rules.d/60-tpm-udev.rules ]]; then
-    echo 'tss:x:59:59:tpm user:/dev/null:/sbin/nologin' >> "$sysroot"/etc/passwd
-    echo 'tss:!!:15587::::::' >> "$sysroot"/etc/shadow
-    echo 'tss:x:59:' >> "$sysroot"/etc/group
-    echo 'tss:!::' >> "$sysroot"/etc/gshadow
 fi
 
 #---------------

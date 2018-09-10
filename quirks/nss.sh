@@ -23,7 +23,7 @@ chroot "$sysroot" bash -c 'useradd admin; usermod -a -G wheel admin; echo -n adm
 chroot "$sysroot" bash -c 'passwd -e admin'
 
 mkdir -p "$sysroot"/usr/share/factory/var
-mv "$sysroot"/etc/passwd "$sysroot"/etc/sub{u,g}id "$sysroot"/etc/shadow "$sysroot"/etc/group "$sysroot"/etc/gshadow "$sysroot"/usr/share/factory/var
+mv "$sysroot"/etc/passwd "$sysroot"/etc/sub{u,g}id "$sysroot"/etc/shadow "$sysroot"/etc/group "$sysroot"/etc/gshadow "$sysroot"/usr/share/factory/var/
 
 rm -f "$sysroot"/etc/shadow- "$sysroot"/etc/gshadow-
 
