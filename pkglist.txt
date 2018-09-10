@@ -78,3 +78,4 @@ squashfs-tools
 mc
 veritysetup
 rsync
+pesign
