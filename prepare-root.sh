@@ -163,6 +163,7 @@ for i in passwd shadow group gshadow subuid subgid; do
 done
 
 chown -R +0.+0 "$sysroot"
+chmod 0000 "$sysroot"/etc/{shadow,gshadow}
 
 mkdir -p "$sysroot"/{dev,proc,sys,run}
 mount --bind /proc "$sysroot/proc"
@@ -235,6 +236,8 @@ find "$sysroot" -name '*.rpmnew' -print0 | xargs -0 rm -fv
 mkdir -p ${BASEDIR}/${NAME}
 for i in passwd shadow group gshadow subuid subgid; do
     cp "$sysroot"/etc/"$i" ${BASEDIR}/${NAME}
+    chown "$USER" "${BASEDIR}/${NAME}/$i"
+    chmod u+r "${BASEDIR}/${NAME}/$i"
 done
 
 cp "$CURDIR/clonedisk.sh" "$sysroot"/usr/bin/clonedisk

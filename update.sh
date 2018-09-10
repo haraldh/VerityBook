@@ -79,9 +79,5 @@ sfdisk --part-uuid ${ROOT_DEV} ${ROOT_PARTNO} ${ROOT_UUID}
 mkdir -p /efi/EFI/${NAME}
 cp bootx64.efi /efi/EFI/${NAME}/${NEW_ROOT_NUM}.efi
 
-# better swap prio with efibootmgr
 mv /efi/EFI/${NAME}/${OLD_ROOT_NUM}.efi /efi/EFI/${NAME}/_${OLD_ROOT_NUM}.efi
-
-## unless proper boot entries set, just force copy to default boot loader
-cp bootx64.efi /efi/EFI/Boot/new_bootx64.efi
-mv --backup=simple /efi/EFI/Boot/new_bootx64.efi /efi/EFI/Boot/bootx64.efi
+rm /efi/EFI/${NAME}/_${NEW_ROOT_NUM}.efi

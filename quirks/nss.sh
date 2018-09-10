@@ -1,9 +1,10 @@
+chroot "$sysroot" bash -c 'useradd -G wheel admin' 
+
 sed -i -e 's#^\(passwd:.*\) files#\1 files db altfile#g;s#^\(shadow:.*\) files#\1 files altfiles db#g;s#^\(group:.*\) files#\1 files altfiles db#g' \
     "$sysroot"/etc/nsswitch.conf
 mkdir -p "$sysroot"/usr/db
 sed -i -e 's#/var/db#/usr/db#g' "$sysroot"/lib64/libnss_db-2*.so "$sysroot"/var/db/Makefile
 
-chroot "$sysroot" bash -c 'useradd -G wheel admin'
 egrep -e '^(adm|wheel):.*' "$sysroot"/etc/group > "$sysroot"/etc/group.admin
 egrep -e '^(adm|wheel):.*' "$sysroot"/etc/gshadow > "$sysroot"/etc/gshadow.admin
 
@@ -16,11 +17,15 @@ chroot "$sysroot" bash -c 'make -C /var/db /usr/db/passwd.db /usr/db/shadow.db /
 
 mv "$sysroot"/etc/group.admin "$sysroot"/etc/group
 mv "$sysroot"/etc/gshadow.admin "$sysroot"/etc/gshadow
+chmod 0000 "$sysroot"/etc/gshadow
+
 chroot "$sysroot" bash -c 'useradd admin; usermod -a -G wheel admin; echo -n admin | passwd --stdin admin'
 chroot "$sysroot" bash -c 'passwd -e admin'
 
 mkdir -p "$sysroot"/usr/share/factory/var
 mv "$sysroot"/etc/passwd "$sysroot"/etc/sub{u,g}id "$sysroot"/etc/shadow "$sysroot"/etc/group "$sysroot"/etc/gshadow "$sysroot"/usr/share/factory/var
+
+rm -f "$sysroot"/etc/shadow- "$sysroot"/etc/gshadow-
 
 sed -i -e 's!^# directory = /etc!directory = /var!g' "$sysroot"/etc/libuser.conf
 

@@ -37,6 +37,7 @@ while true; do
             shift 1; continue
             ;;
         '--crypttpm2')
+	    USE_CRYPT="y"
 	    USE_TPM="y"
             shift 1; continue
             ;;
@@ -139,14 +140,30 @@ for i in 1 2 3; do
 done
 
 if ! [[ $UPDATE ]]; then
-    swapoff ${OUT}6 || :
-    # ------------------------------------------------------------------------------
-    # swap
-    echo -n "zero key" \
-        | cryptsetup luksFormat --type luks2 ${OUT}6 /dev/stdin
+    swapoff -a :
 
-    # ------------------------------------------------------------------------------
-    # data
-    echo -n "zero key" \
-        | cryptsetup luksFormat --type luks2 ${OUT}7 /dev/stdin
+    if [[ $USE_CRYPT ]]; then
+           # ------------------------------------------------------------------------------
+        # swap
+        echo -n "zero key" \
+            | cryptsetup luksFormat --type luks2 ${OUT}6 /dev/stdin
+        
+        # ------------------------------------------------------------------------------
+        # data
+        echo -n "zero key" \
+            | cryptsetup luksFormat --type luks2 ${OUT}7 /dev/stdin
+    else
+        mkswap ${OUT}6
+        mkfs.xfs -L data ${OUT}7
+    fi
+fi
+
+efibootmgr -C -b FED1 -d ${OUT_DEV} -p 1 -L "FedoraBook 1" -l '\efi\fedorabook\1.efi'
+efibootmgr -C -b FED2 -d ${OUT_DEV} -p 1 -L "FedoraBook 2" -l '\efi\fedorabook\2.efi'
+efibootmgr -C -b FED3 -d ${OUT_DEV} -p 1 -L "FedoraBook Old 1" -l '\efi\fedorabook\_1.efi'
+efibootmgr -C -b FED4 -d ${OUT_DEV} -p 1 -L "FedoraBook Old 2" -l '\efi\fedorabook\_2.efi'
+
+BOOT_ORDER=$(efibootmgr | grep BootOrder: | { read _ a; echo "$a"; })
+if ! [[ $BOOT_ORDER == *FED1* ]]; then
+    efibootmgr -o "FED1,FED2,FED3,FED4,$BOOT_ORDER"
 fi

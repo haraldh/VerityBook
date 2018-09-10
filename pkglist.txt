@@ -77,3 +77,4 @@ libvirt-daemon-kvm
 squashfs-tools
 mc
 veritysetup
+rsync
