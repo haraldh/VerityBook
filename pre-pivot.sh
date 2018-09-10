@@ -133,8 +133,8 @@ mount -o bind /sysroot/data/var /sysroot/var
 mount -o bind /sysroot/data/home /sysroot/home
 
 for i in passwd shadow group gshadow subuid subgid; do
-    [[ -f /sysroot/data/var/$i ]] && continue
-    cp -a /sysroot/usr/share/factory/data/var/$i /sysroot/data/var/$i
+    [[ -f /sysroot/var/$i ]] && continue
+    cp -a /sysroot/usr/share/factory/var/$i /sysroot/var/$i
 done
 
 chroot /sysroot /usr/bin/systemd-tmpfiles --create --remove --boot --exclude-prefix=/dev --exclude-prefix=/run --exclude-prefix=/tmp --exclude-prefix=/etc 2>&1 | vinfo

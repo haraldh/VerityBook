@@ -20,12 +20,12 @@ cp -avxr "$sysroot"/etc/skel "$sysroot"/usr/share/factory/home/admin
 chown -R +1000.+1000 "$sysroot"/usr/share/factory/home/admin
 
 cat > "$sysroot"/usr/lib/tmpfiles.d/home.conf <<EOF
-C /data/home/admin - - - - -
-C /data/var/passwd - - - - -
-C /data/var/shadow - - - - -
-C /data/var/group - - - - -
-C /data/var/gshadow - - - - -
-C /data/var/subuid - - - - -
-C /data/var/subgid - - - - -
-C /data/var/etc - - - - -
+C /home/admin - - - - -
+C /var/passwd - - - - -
+C /var/shadow - - - - -
+C /var/group - - - - -
+C /var/gshadow - - - - -
+C /var/subuid - - - - -
+C /var/subgid - - - - -
+C /var/etc - - - - -
 EOF

@@ -288,10 +288,7 @@ rm "$sysroot"/pre-pivot.sh
 
 umount "$sysroot"/var/cache/dnf
 
-mkdir -p "$sysroot"/usr/share/factory/data/{var/etc,home}
-ln -sfnr "$sysroot"/usr/share/factory/data/var "$sysroot"/usr/share/factory/var
-ln -sfnr "$sysroot"/usr/share/factory/data/home "$sysroot"/usr/share/factory/home
-
+mkdir -p "$sysroot"/usr/share/factory/{var/etc,home}
 
 chroot "$sysroot" update-ca-trust
 
@@ -453,7 +450,7 @@ rm -fr "$sysroot"/var/tmp/*
 rm -fr "$sysroot"/etc/systemd/system/network-online.target.wants
 mv "$sysroot"/lib/tmpfiles.d/var.conf "$sysroot"/lib/tmpfiles.d-var.conf
 chroot "$sysroot" bash -c 'for i in $(find -H /var -xdev -type d); do grep " $i " -r -q /lib/tmpfiles.d && ! grep " $i " -q /lib/tmpfiles.d-var.conf && rm -vfr --one-file-system "$i" ; done; :'
-cp -avxr "$sysroot"/var/* "$sysroot"/usr/share/factory/data/var/
+cp -avxr "$sysroot"/var/* "$sysroot"/usr/share/factory/var/
 rm -fr "$sysroot"/usr/share/factory/var/{run,lock}
 
 chroot "$sysroot" bash -c 'for i in $(find -H /var -xdev -type d); do echo "C $i - - - - -"; done > /usr/lib/tmpfiles.d/var-quirk.conf; :'
