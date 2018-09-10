@@ -13,11 +13,11 @@ CURRENT_HASH_UUID=${CURRENT_ROOT_HASH:0:8}-${CURRENT_ROOT_HASH:8:4}-${CURRENT_RO
 
 [[ /dev/disk/by-partlabel/root1 -ef /dev/disk/by-partuuid/${CURRENT_ROOT_UUID} ]] \
     && [[ /dev/disk/by-partlabel/ver1 -ef /dev/disk/by-partuuid/${CURRENT_HASH_UUID} ]] \
-    && NEW_ROOT_NUM=2
+    && NEW_ROOT_NUM=2 && OLD_ROOT_NUM=1
 
 [[ /dev/disk/by-partlabel/root2 -ef /dev/disk/by-partuuid/${CURRENT_ROOT_UUID} ]] \
     && [[ /dev/disk/by-partlabel/ver2 -ef /dev/disk/by-partuuid/${CURRENT_HASH_UUID} ]] \
-    && NEW_ROOT_NUM=1
+    && NEW_ROOT_NUM=1 && OLD_ROOT_NUM=2 
 
 if ! [[ $NEW_ROOT_NUM ]]; then
     echo "Current partitions booted from not found!"
@@ -78,6 +78,9 @@ sfdisk --part-uuid ${ROOT_DEV} ${ROOT_PARTNO} ${ROOT_UUID}
 # install to /efi
 mkdir -p /efi/EFI/${NAME}
 cp bootx64.efi /efi/EFI/${NAME}/${NEW_ROOT_NUM}.efi
+
+# better swap prio with efibootmgr
+mv /efi/EFI/${NAME}/${OLD_ROOT_NUM}.efi /efi/EFI/${NAME}/_${OLD_ROOT_NUM}.efi
 
 ## unless proper boot entries set, just force copy to default boot loader
 cp bootx64.efi /efi/EFI/Boot/new_bootx64.efi

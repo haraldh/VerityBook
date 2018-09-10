@@ -14,7 +14,9 @@ Creates a directory with a readonly root on squashfs, a dm_verity file and an EF
   --outdir DIR       Creates DIR and puts all files in there (default: NAME-NUM-DATE)
   --name NAME        The NAME of the product (default: FedoraBook)
   --logo FILE        Uses the .bmp FILE to display as a splash screen (default: logo.bmp)
+  --quirks LIST      Source the list of quirks from the quikrs directory
   --gpgkey FILE      Use FILE as the signing gpg key
+  --reposd DIR       Use DIR as the dnf repository directory
   --noupdate         Do not install from Fedora Updates
 EOF
 }
@@ -33,6 +35,9 @@ TEMP=$(
         --long name: \
         --long releasever: \
         --long logo: \
+        --long quirks: \
+        --long gpgkey: \
+        --long reposd: \
         --long noupdates \
         -- "$@"
     )
@@ -46,6 +51,7 @@ eval set -- "$TEMP"
 unset TEMP
 . /etc/os-release
 unset NAME
+declare -a QUIRKS
 
 while true; do
     case "$1" in
@@ -81,8 +87,16 @@ while true; do
             LOGO="$2"
             shift 2; continue
             ;;
+        '--quirks')
+            QUIRKS+=( $2 )
+            shift 2; continue
+            ;;
         '--gpgkey')
             GPGKEY="$2"
+            shift 2; continue
+            ;;
+        '--reposd')
+            REPOSD="$2"
             shift 2; continue
             ;;
         '--noupdates')
@@ -106,6 +120,7 @@ RELEASEVER=${RELEASEVER:-$VERSION_ID}
 VERSION_ID="${RELEASEVER}.$(date -u +'%Y%m%d%H%M%S')"
 OUTDIR=${OUTDIR:-"${CURDIR}/${NAME}-${VERSION_ID}"}
 GPGKEY=${GPGKEY:-${NAME}.gpg}
+REPOSD=${REPOSD:-/etc/yum.repos.d}
 
 [[ $TMPDIR ]] || TMPDIR=/var/tmp
 readonly TMPDIR="$(realpath -e "$TMPDIR")"
@@ -140,6 +155,15 @@ fi
 
 readonly sysroot="${MY_TMPDIR}/sysroot"
 
+# We need to preserve old uid/gid
+mkdir -p "$sysroot"/etc
+for i in passwd shadow group gshadow subuid subgid; do
+    [[ -e "${BASEDIR}/${NAME}/$i" ]] || continue
+    cp -a "${BASEDIR}/${NAME}/$i" "$sysroot"/etc/"$i"
+done
+
+chown -R +0.+0 "$sysroot"
+
 mkdir -p "$sysroot"/{dev,proc,sys,run}
 mount --bind /proc "$sysroot/proc"
 #mount --bind /run "$sysroot/run"
@@ -149,18 +173,12 @@ mount -t devtmpfs devtmpfs "$sysroot/dev"
 mkdir -p "$sysroot"/var/cache/dnf
 mount --bind /var/cache/dnf "$sysroot"/var/cache/dnf
 
-# We need to preserve old uid/gid
-mkdir -p "$sysroot"/etc
-for i in passwd shadow group gshadow subuid subgid; do
-    [[ -e "${BASEDIR}/${NAME}/$i" ]] || continue
-    cp "${BASEDIR}/${NAME}/$i" "$sysroot"/etc/"$i"
-done
-
-dnf -v --nogpgcheck --installroot "$sysroot"/ --releasever "$RELEASEVER" --disablerepo='*' \
-    --enablerepo=fedora \
-    ${WITH_UPDATES:+--enablerepo=updates} \
+dnf -v --nogpgcheck \
+    --installroot "$sysroot"/ \
+    --releasever "$RELEASEVER" \
     --exclude="$EXCLUDELIST" \
     --setopt=keepcache=True \
+    --setopt=reposdir="$REPOSD" \
     install -y \
     dracut \
     passwd \
@@ -222,6 +240,7 @@ done
 cp "$CURDIR/clonedisk.sh" "$sysroot"/usr/bin/clonedisk
 cp "$CURDIR/update.sh" "$sysroot"/usr/bin/update
 cp "$CURDIR/update.sh" "$sysroot"/usr/bin/update
+
 mkdir -p "$sysroot"/etc/pki/${NAME}
 cp "${CURDIR}/${GPGKEY}" "$sysroot"/etc/pki/${NAME}/GPG-KEY
 
@@ -251,7 +270,6 @@ chroot  "$sysroot" \
 	--install "cryptsetup tail sort pwmake mktemp swapon" \
 	--install "tpm2_pcrextend tpm2_createprimary tpm2_pcrlist tpm2_createpolicy" \
 	--install "tpm2_create tpm2_load tpm2_unseal tpm2_takeownership" \
-	--install "strace" \
 	--include /pre-pivot.sh /lib/dracut/hooks/pre-pivot/pre-pivot.sh \
 	--include /overlay / \
 	--install /usr/lib/systemd/system/clevis-luks-askpass.path \
@@ -270,6 +288,15 @@ umount "$sysroot"/var/cache/dnf
 mkdir -p "$sysroot"/usr/share/factory/data/{var/etc,home}
 ln -sfnr "$sysroot"/usr/share/factory/data/var "$sysroot"/usr/share/factory/var
 ln -sfnr "$sysroot"/usr/share/factory/data/home "$sysroot"/usr/share/factory/home
+
+
+chroot "$sysroot" update-ca-trust
+
+. "${BASEDIR}"/quirks/nss.sh
+
+for q in "${QUIRKS[@]}"; do 
+    . "${BASEDIR}"/quirks/"$q".sh
+done
 
 #---------------
 # timesync
@@ -321,8 +348,6 @@ C /var/etc/libvirt - - - - -
 EOF
 fi
 
-. "${BASEDIR}"/quirks/nss.sh
-
 #---------------
 # resolv.conf
 ln -fsrn "$sysroot"/run/NetworkManager/resolv.conf "$sysroot"/etc/resolv.conf
@@ -354,10 +379,12 @@ mv "$sysroot"/etc/adjtime "$sysroot"/usr/share/factory/var/adjtime
 ln -fsnr "$sysroot"/var/adjtime "$sysroot"/etc/adjtime
 
 sed -i -e 's#/etc/locale.conf#/var/locale.conf#g;s#/etc/vconsole.conf#/var/vconsole.conf#g' "$sysroot"/usr/lib/systemd/systemd-localed
-sed -i -e 's#/etc/adjtime#/var/adjtime#g;s#/etc/localtime#/var/localtime#g' "$sysroot"/usr/lib/systemd/systemd-timedated
+sed -i -e 's#/etc/adjtime#/var/adjtime#g;s#/etc/localtime#/var/localtime#g' \
+    "$sysroot"/usr/lib/systemd/systemd-timedated \
+    "$sysroot"/usr/lib/systemd/libsystemd-shared*.so
 
-sed -i -e 's#ReadWritePaths=/etc#ReadWritePaths=/var#g' /lib/systemd/system/systemd-localed.service
-sed -i -e 's#ReadWritePaths=/etc#ReadWritePaths=/var#g' /lib/systemd/system/systemd-timedated.service
+sed -i -e 's#ReadWritePaths=/etc#ReadWritePaths=/var#g' "$sysroot"/lib/systemd/system/systemd-localed.service
+sed -i -e 's#ReadWritePaths=/etc#ReadWritePaths=/var#g' "$sysroot"/lib/systemd/system/systemd-timedated.service
 
 cat >> "$sysroot"/usr/lib/tmpfiles.d/00-basics.conf <<EOF
 C /var/hostname - - - - -
@@ -383,6 +410,7 @@ fi
 # autofs
 if [[ -f "$sysroot"/etc/autofs.conf ]]; then
     mkdir -p "$sysroot"/net
+    systemctl --root "$sysroot" enable autofs
 fi
 
 #---------------
@@ -425,7 +453,7 @@ chroot "$sysroot" bash -c 'for i in $(find -H /var -xdev -type d); do grep " $i 
 cp -avxr "$sysroot"/var/* "$sysroot"/usr/share/factory/data/var/
 rm -fr "$sysroot"/usr/share/factory/var/{run,lock}
 
-chroot "$sysroot" bash -c 'for i in $(find -H /var -xdev -type d); do echo "C /data$i - - - - -"; done > /usr/lib/tmpfiles.d/var-quirk.conf; :'
+chroot "$sysroot" bash -c 'for i in $(find -H /var -xdev -type d); do echo "C $i - - - - -"; done > /usr/lib/tmpfiles.d/var-quirk.conf; :'
 mv "$sysroot"/lib/tmpfiles.d-var.conf "$sysroot"/lib/tmpfiles.d/var.conf
 
 sed -i -e "s#VERSION_ID=.*#VERSION_ID=$VERSION_ID#" "$sysroot"/etc/os-release
@@ -435,7 +463,8 @@ mv -v "$sysroot"/boot/*/*/initrd "$MY_TMPDIR"/
 mv -v "$sysroot"/lib/modules/*/vmlinuz "$MY_TMPDIR"/linux
 rm -fr "$sysroot"/{boot,root}
 ln -sfnr "$sysroot"/data/root "$sysroot"/root
-rm -fr "$sysroot"/etc/yum.repos.d/*
+mkdir -p "$sysroot"/usr/etc
+mv "$sysroot"/etc/yum.repos.d "$sysroot"/usr/etc/yum.repos.d 
 mkdir "$sysroot"/efi
 rm -fr "$sysroot"/var/*
 rm -fr "$sysroot"/home/*

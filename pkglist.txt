@@ -70,3 +70,10 @@ nautilus
 rpcbind
 nfs-utils
 autofs
+dnf
+fedora-release
+libvirt-daemon-config-network
+libvirt-daemon-kvm
+squashfs-tools
+mc
+veritysetup
