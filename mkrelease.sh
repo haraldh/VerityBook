@@ -2,7 +2,6 @@
 
 JSON="$(realpath -e $1)"
 BASEDIR="${JSON%/*}"
-
 IMAGE="${BASEDIR}/$(jq -r '.name' ${JSON})-$(jq -r '.version' ${JSON})"
 
 (

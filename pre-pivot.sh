@@ -1,46 +1,27 @@
 #!/bin/bash
 
-root=$(getarg systemd.verity_root_hash)
+bootdisk() {
+    UUID=$({ read -r -n 1 -d '' _; read -n 72 uuid; echo -n ${uuid,,}; } < /sys/firmware/efi/efivars/LoaderDevicePartUUID-4a67b082-0a4c-41cf-b6c7-440b29bb8c4f)
 
-case "$root" in
-    block:LABEL=*|LABEL=*)
-        root="${root#block:}"
-        root="$(echo $root | sed 's,/,\\x2f,g')"
-        root="/dev/disk/by-label/${root#LABEL=}"
-        rootok=1 ;;
-    block:UUID=*|UUID=*)
-        root="${root#block:}"
-        root="${root#UUID=}"
-        root="$(echo $root | tr "[:upper:]" "[:lower:]")"
-        root="/dev/disk/by-uuid/${root#UUID=}"
-        rootok=1 ;;
-    block:PARTUUID=*|PARTUUID=*)
-        root="${root#block:}"
-        root="${root#PARTUUID=}"
-        root="$(echo $root | tr "[:upper:]" "[:lower:]")"
-        root="/dev/disk/by-partuuid/${root}"
-        rootok=1 ;;
-    block:PARTLABEL=*|PARTLABEL=*)
-        root="${root#block:}"
-        root="/dev/disk/by-partlabel/${root#PARTLABEL=}"
-        rootok=1 ;;
-    /dev/*)
-        rootok=1 ;;
-esac
+    [[ $UUID ]] || return 1
+    echo "/dev/disk/by-partuuid/$UUID"
+    return 0
+}
+
+get_disk() {
+    for dev in /dev/disk/by-path/*; do
+        [[ $dev -ef $1 ]] || continue
+        echo ${dev%-part*}
+        return 0
+    done
+    return 1
+}
+
+BOOTDISK=$(get_disk $(bootdisk)) 
+[[ $BOOTDISK ]] || die "No boot disk found"
 
 unset FOUND
-for d in /dev/disk/by-path/*; do
-    [[ $d -ef $root ]] || continue
-    FOUND=1
-    break
-done
-
-[[ $FOUND ]] || die "No boot disk found"
-
-disk=${d%-part*}
-
-unset FOUND
-for swapdev in $disk*; do
+for swapdev in $BOOTDISK-part*; do
     [[ $(blkid -o value -s PARTLABEL "$swapdev") == "swap" ]] || continue
     FOUND=1
     break
@@ -83,7 +64,7 @@ fi
 
 
 unset FOUND
-for datadev in $disk*; do
+for datadev in $BOOTDISK-part*; do
     [[ $(blkid -o value -s PARTLABEL "$datadev") == "data" ]] || continue
     FOUND=1
     break

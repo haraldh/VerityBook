@@ -31,7 +31,9 @@ getuint () {
 
 squashfs_size() {
     size=$(for i in {1..20}; do getword >/dev/null; done; getuint)
-    echo $(((size+4095)/4096*4096))
+    # super block is 96 bytes
+    # pad to 4096
+    echo $(((size+96+4095)/4096*4096))
 }
 
 squashfs_size

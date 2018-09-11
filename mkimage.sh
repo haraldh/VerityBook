@@ -106,8 +106,6 @@ trap 'exit 1;' SIGINT
 ROOT_HASH=$(<"$SOURCE"/root-hash.txt)
 
 ROOT_UUID=${ROOT_HASH:32:8}-${ROOT_HASH:40:4}-${ROOT_HASH:44:4}-${ROOT_HASH:48:4}-${ROOT_HASH:52:12}
-HASH_UUID=${ROOT_HASH:0:8}-${ROOT_HASH:8:4}-${ROOT_HASH:12:4}-${ROOT_HASH:16:4}-${ROOT_HASH:20:12}
-
 
 # ------------------------------------------------------------------------------
 # Testdisk
@@ -137,18 +135,16 @@ if ! [[ $UPDATE ]]; then
     sfdisk "${DEV}" << EOF
 label: gpt
 	    size=512MiB,  type=c12a7328-f81f-11d2-ba4b-00a0c93ec93b, name="ESP System Partition"
-            size=64MiB,   type=2c7357ed-ebd2-46d9-aec1-23d437ec2bf5, name="ver1", uuid=$HASH_UUID
             size=4GiB,    type=4F68BCE3-E8CD-4DB1-96E7-FBCAF984B709, name="root1", uuid=$ROOT_UUID
                           type=3b8f8425-20e0-4f3b-907f-1a25a76f98e9, name="data"
 EOF
 
     udevadm settle
-    for i in 1 2 3 4; do
+    for i in 1 2 3; do
         wipefs --force --all ${DEV_PART}${i}
     done
     udevadm settle
 else
-    sfdisk --part-uuid ${DEV} 2 ${HASH_UUID}
     sfdisk --part-uuid ${DEV} 3 ${ROOT_UUID}
 fi
 
@@ -165,17 +161,13 @@ cp "$SOURCE"/bootx64.efi "$MY_TMPDIR"/boot/EFI/Boot/bootx64.efi
 umount "$MY_TMPDIR"/boot
 
 # ------------------------------------------------------------------------------
-# ver1
-dd if="$SOURCE"/root.verity.img of=${DEV_PART}2 status=progress
-
-# ------------------------------------------------------------------------------
 # root1
-dd if="$SOURCE"/root.squashfs.img of=${DEV_PART}3 status=progress
+dd if="$SOURCE"/root.img of=${DEV_PART}2 status=progress
 
 # ------------------------------------------------------------------------------
 # data
 if ! [[ $UPDATE ]]; then
-    mkfs.xfs -L data ${DEV_PART}4
+    mkfs.xfs -L data ${DEV_PART}3
 fi
 # ------------------------------------------------------------------------------
 # DONE
@@ -184,4 +176,3 @@ sync
 losetup -d $DEV || :
 eject "$DEV" || :
 sync
-

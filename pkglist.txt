@@ -76,6 +76,9 @@ libvirt-daemon-config-network
 libvirt-daemon-kvm
 squashfs-tools
 mc
-veritysetup
 rsync
 pesign
+nss-tools
+gnu-efi-devel
+sbsigntools
+

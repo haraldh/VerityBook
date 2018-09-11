@@ -39,9 +39,11 @@ sed -i -e 's#/etc/.pwdXXXXXX#/var/.pwdXXXXXX#g' "$sysroot"/usr/lib64/security/pa
 sed -i -e 's#/etc/passwd#/var/passwd#g;s#/etc/shadow#/var/shadow#g;s#/etc/gshadow#/var/gshadow#g;s#/etc/group#/var/group#g;s#/etc/subuid#/var/subuid#g;s#/etc/subgid#/var/subgid#g' "$sysroot"/usr/sbin/user{add,mod,del} "$sysroot"/usr/sbin/group{add,mod,del}
 sed -i -e 's#/etc/.pwd.lock#/var/.pwd.lock#g' \
     "$sysroot"/lib*/libc.so.* \
-    "$sysroot"/usr/lib*/librpmostree-1.so.1 \
     "$sysroot"/usr/lib/systemd/libsystemd-shared*.so
 
+[[ -e "$sysroot"/usr/lib*/librpmostree-1.so.1 ]] \
+    && sed -i -e 's#/etc/.pwd.lock#/var/.pwd.lock#g' \
+    "$sysroot"/usr/lib*/librpmostree-1.so.1
 
 mkdir -p "$sysroot"/usr/share/factory/home
 cp -avxr "$sysroot"/etc/skel "$sysroot"/usr/share/factory/home/admin

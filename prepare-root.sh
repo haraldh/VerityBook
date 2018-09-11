@@ -219,6 +219,7 @@ dnf -v --nogpgcheck \
     efibootmgr \
     jq \
     gnupg2 \
+    veritysetup \
     $PKGLIST
 
 for i in passwd shadow group gshadow subuid subgid; do
@@ -251,6 +252,7 @@ rpm --root "$sysroot" -qa | sort > "$sysroot"/usr/rpm-list.txt
 mkdir -p "$sysroot"/overlay/efi
 
 cp "${BASEDIR}"/pre-pivot.sh "$sysroot"/pre-pivot.sh
+cp -avr "${BASEDIR}"/10verity "$sysroot"/usr/lib/dracut/modules.d/
 chmod 0755 "$sysroot"/pre-pivot.sh
 
 KVER=$(cd "$sysroot"/lib/modules/; ls -1d ??* | tail -1)
@@ -265,9 +267,7 @@ chroot  "$sysroot" \
 	dracut -N --kver $KVER --force \
 	--filesystems "squashfs vfat xfs" \
 	--add-drivers "=drivers/char/tpm" \
-	-m "bash systemd systemd-initrd modsign crypt dm kernel-modules qemu rootfs-block udev-rules dracut-systemd base fs-lib shutdown terminfo resume" \
-	--install /usr/lib/systemd/systemd-veritysetup \
-	--install /usr/lib/systemd/system-generators/systemd-veritysetup-generator \
+	-m "bash systemd systemd-initrd modsign crypt dm kernel-modules qemu rootfs-block udev-rules dracut-systemd base fs-lib shutdown terminfo resume verity" \
 	--install "clonedisk wipefs sfdisk dd mkfs.xfs mkswap chroot mountpoint mkdir stat openssl" \
 	--install "clevis clevis-luks-bind jose clevis-encrypt-tpm2 clevis-decrypt clevis-luks-unlock clevis-decrypt-tpm2"  \
 	--install "cryptsetup tail sort pwmake mktemp swapon" \
@@ -303,7 +303,7 @@ fi
 
 . "${BASEDIR}"/quirks/nss.sh
 
-for q in "${QUIRKS[@]}"; do 
+for q in "${QUIRKS[@]}"; do
     . "${BASEDIR}"/quirks/"$q".sh
 done
 
@@ -469,7 +469,7 @@ mv -v "$sysroot"/lib/modules/*/vmlinuz "$MY_TMPDIR"/linux
 rm -fr "$sysroot"/{boot,root}
 ln -sfnr "$sysroot"/data/root "$sysroot"/root
 mkdir -p "$sysroot"/usr/etc
-mv "$sysroot"/etc/yum.repos.d "$sysroot"/usr/etc/yum.repos.d 
+mv "$sysroot"/etc/yum.repos.d "$sysroot"/usr/etc/yum.repos.d
 mkdir "$sysroot"/efi
 rm -fr "$sysroot"/var/*
 rm -fr "$sysroot"/home/*
@@ -493,11 +493,15 @@ ROOT_HASH=$(veritysetup format "$MY_TMPDIR"/root.squashfs.img "$MY_TMPDIR"/root.
 echo "$ROOT_HASH" > "$MY_TMPDIR"/root-hash.txt
 
 ROOT_UUID=${ROOT_HASH:32:8}-${ROOT_HASH:40:4}-${ROOT_HASH:44:4}-${ROOT_HASH:48:4}-${ROOT_HASH:52:12}
-HASH_UUID=${ROOT_HASH:0:8}-${ROOT_HASH:8:4}-${ROOT_HASH:12:4}-${ROOT_HASH:16:4}-${ROOT_HASH:20:12}
+ROOT_SIZE=$(stat --printf '%s' "$MY_TMPDIR"/root.squashfs.img)
+HASH_SIZE=$(stat --printf '%s' "$MY_TMPDIR"/root.verity.img)
+cat "$MY_TMPDIR"/root.verity.img >> "$MY_TMPDIR"/root.squashfs.img
+mv "$MY_TMPDIR"/root.squashfs.img "$MY_TMPDIR"/root.img
+IMAGE_SIZE=$(stat --printf '%s' "$MY_TMPDIR"/root.img)
 
 # ------------------------------------------------------------------------------
 # make bootx64.efi
-echo -n "rd.shell=0 quiet video=efifb:nobgrt audit=0 selinux=0 roothash=$ROOT_HASH systemd.verity_root_data=PARTUUID=$ROOT_UUID systemd.verity_root_hash=PARTUUID=$HASH_UUID raid=noautodetect" > "$MY_TMPDIR"/options.txt
+echo -n "quiet rd.shell=0 video=efifb:nobgrt audit=0 selinux=0 verity.imagesize=$IMAGE_SIZE verity.roothash=$ROOT_HASH verity.root=PARTUUID=$ROOT_UUID verity.hashoffset=$ROOT_SIZE raid=noautodetect root=/dev/mapper/root" > "$MY_TMPDIR"/options.txt
 echo -n "${NAME}-${VERSION_ID}" > "$MY_TMPDIR"/release.txt
 objcopy \
     --add-section .release="$MY_TMPDIR"/release.txt --change-section-vma .release=0x20000 \
@@ -511,8 +515,7 @@ objcopy \
 mkdir -p "$OUTDIR"
 mv "$MY_TMPDIR"/root-hash.txt \
    "$MY_TMPDIR"/bootx64.efi \
-   "$MY_TMPDIR"/root.squashfs.img \
-   "$MY_TMPDIR"/root.verity.img \
+   "$MY_TMPDIR"/root.img \
    "$MY_TMPDIR"/release.txt \
    "$MY_TMPDIR"/options.txt \
    "$MY_TMPDIR"/linux \
@@ -524,7 +527,8 @@ chown -R "$USER" "$OUTDIR"
 cat > "${OUTDIR%/*}/${NAME}-latest.json" <<EOF
 {
         "roothash": "$ROOT_HASH",
-        "name" : "${NAME}",
+        "rootsize": "$ROOT_SIZE",
+        "name"    : "${NAME}",
         "version" : "${VERSION_ID}"
 }
 EOF

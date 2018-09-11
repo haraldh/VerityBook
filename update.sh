@@ -68,15 +68,12 @@ CURRENT_ROOT_HASH=${CURRENT_ROOT_HASH#*roothash=}
 CURRENT_ROOT_HASH=${CURRENT_ROOT_HASH%% *}
 
 CURRENT_ROOT_UUID=${CURRENT_ROOT_HASH:32:8}-${CURRENT_ROOT_HASH:40:4}-${CURRENT_ROOT_HASH:44:4}-${CURRENT_ROOT_HASH:48:4}-${CURRENT_ROOT_HASH:52:12}
-CURRENT_HASH_UUID=${CURRENT_ROOT_HASH:0:8}-${CURRENT_ROOT_HASH:8:4}-${CURRENT_ROOT_HASH:12:4}-${CURRENT_ROOT_HASH:16:4}-${CURRENT_ROOT_HASH:20:12}
 
 [[ /dev/disk/by-partlabel/root1 -ef /dev/disk/by-partuuid/${CURRENT_ROOT_UUID} ]] \
-    && [[ /dev/disk/by-partlabel/ver1 -ef /dev/disk/by-partuuid/${CURRENT_HASH_UUID} ]] \
     && NEW_ROOT_NUM=2 && OLD_ROOT_NUM=1
 
 [[ /dev/disk/by-partlabel/root2 -ef /dev/disk/by-partuuid/${CURRENT_ROOT_UUID} ]] \
-    && [[ /dev/disk/by-partlabel/ver2 -ef /dev/disk/by-partuuid/${CURRENT_HASH_UUID} ]] \
-    && NEW_ROOT_NUM=1 && OLD_ROOT_NUM=2 
+    && NEW_ROOT_NUM=1 && OLD_ROOT_NUM=2
 
 if ! [[ $NEW_ROOT_NUM ]]; then
     echo "Current partitions booted from not found!"
@@ -85,18 +82,14 @@ fi
 
 ## find base device and partition number
 for dev in /dev/disk/by-path/*; do
-    if ! [[ $VER_PARTNO ]] && [[ /dev/disk/by-partlabel/ver${NEW_ROOT_NUM} -ef $dev ]]; then
-        VER_PARTNO=${dev##*-part}
-        ROOT_DEV=${dev%-part*}
-    fi
     if ! [[ $ROOT_PARTNO ]] && [[ /dev/disk/by-partlabel/root${NEW_ROOT_NUM} -ef $dev ]]; then
         ROOT_PARTNO=${dev##*-part}
         ROOT_DEV=${dev%-part*}
     fi
-    [[ $ROOT_PARTNO ]] && [[ $VER_PARTNO ]] && break
+    [[ $ROOT_PARTNO ]] && break
 done
 
-if ! [[ $ROOT_PARTNO ]] || ! [[ $VER_PARTNO ]] || ! [[ $ROOT_DEV ]]; then
+if ! [[ $ROOT_PARTNO ]] || ! [[ $ROOT_DEV ]]; then
     echo "Couldn't find partition numbers"
     exit 1
 fi
@@ -136,14 +129,11 @@ if ! [[ $NO_CHECK ]]; then
     sha512sum -c sha512sum.txt
 fi
 
-dd status=progress if=root.verity.img   of=/dev/disk/by-partlabel/ver${NEW_ROOT_NUM}
-dd status=progress if=root.squashfs.img of=/dev/disk/by-partlabel/root${NEW_ROOT_NUM}
+dd status=progress if=root.img of=/dev/disk/by-partlabel/root${NEW_ROOT_NUM}
 
 # set the new partition uuids
 ROOT_UUID=${ROOT_HASH:32:8}-${ROOT_HASH:40:4}-${ROOT_HASH:44:4}-${ROOT_HASH:48:4}-${ROOT_HASH:52:12}
-HASH_UUID=${ROOT_HASH:0:8}-${ROOT_HASH:8:4}-${ROOT_HASH:12:4}-${ROOT_HASH:16:4}-${ROOT_HASH:20:12}
-            
-sfdisk --part-uuid ${ROOT_DEV} ${VER_PARTNO} ${HASH_UUID}
+
 sfdisk --part-uuid ${ROOT_DEV} ${ROOT_PARTNO} ${ROOT_UUID}
 
 # install to /efi
