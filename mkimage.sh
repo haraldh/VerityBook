@@ -1,10 +1,4 @@
-#!/bin/bash
-
-#===================================
-FEDORA_VERSION=${FEDORA_VERSION:-28}
-#===================================
-
-set -ex
+#!/bin/bash -ex
 
 CURDIR=$(pwd)
 PROGNAME=${0##*/}
@@ -74,7 +68,7 @@ while true; do
 done
 
 SOURCE=$(readlink -e "$1")
-IMAGE=$(readlink -e "$2")
+IMAGE=$(readlink -f "$2")
 
 if ! [[ -d $SOURCE ]] || ! [[ $IMAGE ]]; then
     usage

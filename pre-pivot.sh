@@ -56,29 +56,29 @@ if [[ $FOUND ]]; then
             export TPM2TOOLS_TCTI_NAME=device
             export TPM2TOOLS_DEVICE_FILE=/dev/tpmrm0
 
-            if echo -n "zero key" | clevis-luks-bind -f -k - -d "$swapdev" tpm2 '{"pcr_ids":"7"}'; then
+            if echo -n "zero key" | clevis-luks-bind -f -k - -d "$swapdev" tpm2 '{"pcr_ids":"7"}' 2>&1 | vwarn; then
                 clevis-luks-unlock -d "$swapdev" -n "$luksname" || die "Failed to unlock $swapdev"
                 echo -n "zero key" | cryptsetup luksRemoveKey "$swapdev" /dev/stdin || die "Failed to remove key from LUKS"
-            elif echo -n "zero key" | clevis-luks-bind -f -k - -d "$swapdev" tpm2 '{"pcr_ids":"7","key":"rsa"}'; then
+            elif echo -n "zero key" | clevis-luks-bind -f -k - -d "$swapdev" tpm2 '{"pcr_ids":"7","key":"rsa"}' 2>&1 | vwarn; then
                 clevis-luks-unlock -d "$swapdev" -n "$luksname" || die "Failed to unlock $swapdev"
                 echo -n "zero key" | cryptsetup luksRemoveKey "$swapdev" /dev/stdin || die "Failed to remove key from LUKS"
             else
                 warn "Failed to bind swap disk to TPM2"
             fi
         else
-            clevis-luks-unlock -d "$swapdev" -n "$luksname" || die "Failed to unlock $swapdev"
+            clevis-luks-unlock -d "$swapdev" -n "$luksname"  2>&1 | vinfo || die "Failed to unlock $swapdev"
         fi
         swapdev="$luksdev"
     fi
 
     swaptype=$(blkid -o value -s TYPE "$swapdev")
     [[ $swaptype == "swsuspend" ]] && \
-        /usr/lib/systemd/systemd-hibernate-resume "$swapdev"
+        /usr/lib/systemd/systemd-hibernate-resume "$swapdev"  &>/dev/null
 
     [[ $swaptype != "swap" ]] && \
-        mkswap "$swapdev"
+        mkswap "$swapdev" 2>&1 | vinfo
 
-    swapon "$swapdev"
+    swapon "$swapdev" 2>&1 | vinfo
 fi
 
 

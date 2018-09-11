@@ -374,6 +374,11 @@ mv "$sysroot"/etc/localtime "$sysroot"/usr/share/factory/var/localtime
 ln -fsnr "$sysroot"/var/localtime "$sysroot"/etc/localtime
 
 #---------------
+# machine-id
+rm -f "$sysroot"/etc/machine-id
+ln -fsnr "$sysroot"/var/machine-id "$sysroot"/etc/machine-id
+
+#---------------
 # adjtime
 mv "$sysroot"/etc/adjtime "$sysroot"/usr/share/factory/var/adjtime
 ln -fsnr "$sysroot"/var/adjtime "$sysroot"/etc/adjtime
@@ -453,7 +458,7 @@ chroot "$sysroot" bash -c 'for i in $(find -H /var -xdev -type d); do grep " $i 
 cp -avxr "$sysroot"/var/* "$sysroot"/usr/share/factory/var/
 rm -fr "$sysroot"/usr/share/factory/var/{run,lock}
 
-chroot "$sysroot" bash -c 'for i in $(find -H /var -xdev -type d); do echo "C $i - - - - -"; done > /usr/lib/tmpfiles.d/var-quirk.conf; :'
+chroot "$sysroot" bash -c 'for i in $(find -H /var -xdev -maxdepth 2 -mindepth 1 -type d); do echo "C $i - - - - -"; done > /usr/lib/tmpfiles.d/var-quirk.conf; :'
 mv "$sysroot"/lib/tmpfiles.d-var.conf "$sysroot"/lib/tmpfiles.d/var.conf
 
 sed -i -e "s#VERSION_ID=.*#VERSION_ID=$VERSION_ID#" "$sysroot"/etc/os-release

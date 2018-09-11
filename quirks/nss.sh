@@ -60,5 +60,4 @@ C /var/group - - - - -
 C /var/gshadow - - - - -
 C /var/subuid - - - - -
 C /var/subgid - - - - -
-C /var/etc - - - - -
 EOF

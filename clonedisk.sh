@@ -107,6 +107,7 @@ if [[ ${IN#/dev/loop} != $IN ]]; then
 fi
 
 if ! [[ $UPDATE ]]; then
+    swapoff -a || :
 
     udevadm settle
     wipefs --all "$OUT"
@@ -140,8 +141,6 @@ for i in 1 2 3; do
 done
 
 if ! [[ $UPDATE ]]; then
-    swapoff -a :
-
     if [[ $USE_CRYPT ]]; then
            # ------------------------------------------------------------------------------
         # swap
