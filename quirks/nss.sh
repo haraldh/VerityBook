@@ -1,4 +1,4 @@
-chroot "$sysroot" bash -c 'useradd -G wheel admin' 
+chroot "$sysroot" bash -c 'useradd -M -G wheel admin'
 
 sed -i -e 's#^\(passwd:.*\) files#\1 files db altfile#g;s#^\(shadow:.*\) files#\1 files altfiles db#g;s#^\(group:.*\) files#\1 files altfiles db#g' \
     "$sysroot"/etc/nsswitch.conf
@@ -29,7 +29,7 @@ rm -f "$sysroot"/etc/shadow- "$sysroot"/etc/gshadow-
 
 sed -i -e 's!^# directory = /etc!directory = /var!g' "$sysroot"/etc/libuser.conf
 
-for i in passwd shadow group gshadow .pwd.lock subuid subgid; do 
+for i in passwd shadow group gshadow .pwd.lock subuid subgid; do
     ln -sfnr "$sysroot"/var/"$i" "$sysroot"/etc/"$i"
 done
 
