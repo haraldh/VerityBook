@@ -473,6 +473,7 @@ mv "$sysroot"/etc/yum.repos.d "$sysroot"/usr/etc/yum.repos.d
 mkdir "$sysroot"/efi
 rm -fr "$sysroot"/var/*
 rm -fr "$sysroot"/home/*
+mkdir -p "$sysroot"/home
 rm -fr "$sysroot"/etc/selinux
 mkdir "$sysroot"/data
 
