@@ -133,12 +133,12 @@ if [[ ${OUT#/dev/nvme} != $OUT ]]; then
     OUT="${OUT}p"
 fi
 
-for i in 1 2; do
-    dd if=${IN}${i} of=${OUT}${i} status=progress
-    sfdisk --part-uuid ${OUT_DEV} $i $(blkid -o value -s PARTUUID ${IN}${i})
-done
+dd if=${IN}2 of=${OUT}$2 status=progress
+sfdisk --part-uuid ${OUT_DEV} 2 $(blkid -o value -s PARTUUID ${IN}2)
 
 if ! [[ $UPDATE ]]; then
+    mkfs.fat -nEFI -F32 ${OUT}1
+
     if [[ $USE_CRYPT ]]; then
            # ------------------------------------------------------------------------------
         # swap
@@ -155,12 +155,23 @@ if ! [[ $UPDATE ]]; then
     fi
 fi
 
-efibootmgr -C -b FED1 -d ${OUT_DEV} -p 1 -L "FedoraBook 1" -l '\efi\fedorabook\1.efi'
-efibootmgr -C -b FED2 -d ${OUT_DEV} -p 1 -L "FedoraBook 2" -l '\efi\fedorabook\2.efi'
-efibootmgr -C -b FED3 -d ${OUT_DEV} -p 1 -L "FedoraBook Old 1" -l '\efi\fedorabook\_1.efi'
-efibootmgr -C -b FED4 -d ${OUT_DEV} -p 1 -L "FedoraBook Old 2" -l '\efi\fedorabook\_2.efi'
+mkdir -p boot
+mount ${OUT}1 boot
+mkdir -p boot/EFI/FedoraBook
+cp /efi/EFI/Boot/bootx64.efi boot/EFI/FedoraBook/1.efi
+umount boot
+rmdir boot
 
-BOOT_ORDER=$(efibootmgr | grep BootOrder: | { read _ a; echo "$a"; })
-if ! [[ $BOOT_ORDER == *FED1* ]]; then
-    efibootmgr -o "FED1,FED2,FED3,FED4,$BOOT_ORDER"
+if ! [[ $UPDATE ]]; then
+    if ! [[ $(efibootmgr) == *FED1* ]]; then
+        efibootmgr -C -b FED1 -d ${OUT_DEV} -p 1 -L "FedoraBook 1" -l '\efi\fedorabook\1.efi'
+        efibootmgr -C -b FED2 -d ${OUT_DEV} -p 1 -L "FedoraBook 2" -l '\efi\fedorabook\2.efi'
+        efibootmgr -C -b FED3 -d ${OUT_DEV} -p 1 -L "FedoraBook Old 1" -l '\efi\fedorabook\_1.efi'
+        efibootmgr -C -b FED4 -d ${OUT_DEV} -p 1 -L "FedoraBook Old 2" -l '\efi\fedorabook\_2.efi'
+    fi
+
+    BOOT_ORDER=$(efibootmgr | grep BootOrder: | { read _ a; echo "$a"; })
+    if ! [[ $BOOT_ORDER == *FED1* ]]; then
+        efibootmgr -o "FED1,FED2,FED3,FED4,$BOOT_ORDER"
+    fi
 fi
