@@ -501,7 +501,7 @@ IMAGE_SIZE=$(stat --printf '%s' "$MY_TMPDIR"/root.img)
 
 # ------------------------------------------------------------------------------
 # make bootx64.efi
-echo -n "quiet rd.shell=0 video=efifb:nobgrt audit=0 selinux=0 verity.imagesize=$IMAGE_SIZE verity.roothash=$ROOT_HASH verity.root=PARTUUID=$ROOT_UUID verity.hashoffset=$ROOT_SIZE raid=noautodetect root=/dev/mapper/root" > "$MY_TMPDIR"/options.txt
+echo -n "lockdown=1 quiet rd.shell=0 video=efifb:nobgrt audit=0 selinux=0 verity.imagesize=$IMAGE_SIZE verity.roothash=$ROOT_HASH verity.root=PARTUUID=$ROOT_UUID verity.hashoffset=$ROOT_SIZE raid=noautodetect root=/dev/mapper/root" > "$MY_TMPDIR"/options.txt
 echo -n "${NAME}-${VERSION_ID}" > "$MY_TMPDIR"/release.txt
 objcopy \
     --add-section .release="$MY_TMPDIR"/release.txt --change-section-vma .release=0x20000 \
