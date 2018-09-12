@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -o pipefail
+
 bootdisk() {
     UUID=$({ read -r -n 1 -d '' _; read -n 72 uuid; echo -n ${uuid,,}; } < /sys/firmware/efi/efivars/LoaderDevicePartUUID-4a67b082-0a4c-41cf-b6c7-440b29bb8c4f)
 
@@ -17,6 +19,8 @@ get_disk() {
     return 1
 }
 
+udevadm settle
+
 BOOTDISK=$(get_disk $(bootdisk)) 
 [[ $BOOTDISK ]] || die "No boot disk found"
 
@@ -33,7 +37,6 @@ if [[ $FOUND ]]; then
         luksdev=/dev/mapper/$luksname
 
         if ! cryptsetup luksDump "$swapdev" | grep -F -q clevis ; then
-            udevadm settle --exit-if-exists=/dev/tpmrm0
             export TPM2TOOLS_TCTI_NAME=device
             export TPM2TOOLS_DEVICE_FILE=/dev/tpmrm0
 
@@ -78,7 +81,6 @@ if cryptsetup isLuks --type luks2 "$datadev"; then
 
     if ! [[ -b $luksdev ]]; then
         if ! cryptsetup luksDump "$datadev" | grep -F -q clevis ; then
-            udevadm settle --exit-if-exists=/dev/tpmrm0
             export TPM2TOOLS_TCTI_NAME=device
             export TPM2TOOLS_DEVICE_FILE=/dev/tpmrm0
 
