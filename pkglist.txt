@@ -81,4 +81,10 @@ pesign
 nss-tools
 gnu-efi-devel
 sbsigntools
+perl-File-Slurp
+help2man
+fedpkg
+fedora-packager
+gperf
+meson
 
