@@ -5,6 +5,7 @@ usage() {
 Usage: $PROGNAME [OPTION]
 
   -h, --help             Display this help
+  --nosign               Don't sign the EFI executable
   --certdir DIR          Use DIR as certification CA for EFI signing
 EOF
 }
@@ -12,6 +13,7 @@ EOF
 TEMP=$(
     getopt -o '' \
         --long certdir: \
+        --long nosign \
 	--long help \
         -- "$@"
     )
@@ -29,6 +31,10 @@ while true; do
         '--certdir')
 	    CERTDIR="$(readlink -e $2)"
             shift 2; continue
+            ;;
+        '--nosign')
+	    NOSIGN="1"
+            shift 1; continue
             ;;
         '--help')
 	    usage
@@ -51,8 +57,10 @@ IMAGE="${BASEDIR}/$(jq -r '.name' ${JSON})-$(jq -r '.version' ${JSON})"
 
 (
     cd "$IMAGE"
-    pesign -c DB -s ${CERTDIR:+--certdir $CERTDIR} -i bootx64.efi -o bootx64-signed.efi
-    mv bootx64-signed.efi bootx64.efi
+    if ! [[ $NOSIGN ]]; then
+        pesign -c DB -s ${CERTDIR:+--certdir $CERTDIR} -i bootx64.efi -o bootx64-signed.efi
+        mv bootx64-signed.efi bootx64.efi
+    fi
     [[ -f sha512sum.txt ]] || sha512sum * > sha512sum.txt
     [[ -f sha512sum.txt.sig ]] || gpg2 --detach-sign sha512sum.txt
 )
