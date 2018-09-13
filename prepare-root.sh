@@ -466,7 +466,8 @@ sed -i -e "s#VERSION_ID=.*#VERSION_ID=$VERSION_ID#" "$sysroot"/etc/os-release
 sed -i -e "s#NAME=.*#NAME=$NAME#" "$sysroot"/etc/os-release
 
 mv -v "$sysroot"/boot/*/*/initrd "$MY_TMPDIR"/
-mv -v "$sysroot"/lib/modules/*/vmlinuz "$MY_TMPDIR"/linux
+cp "$sysroot"/lib/modules/*/vmlinuz "$MY_TMPDIR"/linux
+
 rm -fr "$sysroot"/{boot,root}
 ln -sfnr "$sysroot"/data/root "$sysroot"/root
 mkdir -p "$sysroot"/usr/etc
