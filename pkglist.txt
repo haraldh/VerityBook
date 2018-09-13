@@ -1,9 +1,6 @@
 adwaita-cursor-theme
 adwaita-gtk2-theme
 adwaita-icon-theme
-adwaita-qt
-adwaita-qt4
-adwaita-qt5
 alsa-firmware
 alsa-tools-firmware.x86_64
 atmel-firmware
