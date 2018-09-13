@@ -158,8 +158,8 @@ mount ${DEV_PART}1 "$MY_TMPDIR"/boot
 
 mkdir -p "$MY_TMPDIR"/boot/EFI/Boot
 cp "$SOURCE"/bootx64.efi "$MY_TMPDIR"/boot/EFI/Boot/bootx64.efi
-[[ -e ${CURDIR}/Lockdown.efi ]] && cp ${CURDIR}/Lockdown.efi "$MY_TMPDIR"/boot/
-[[ -e ${CURDIR}/Shell.efi ]] && cp ${CURDIR}/Lockdown.efi "$MY_TMPDIR"/boot/
+[[ -e ${CURDIR}/LockDown.efi ]] && cp ${CURDIR}/LockDown.efi "$MY_TMPDIR"/boot/
+[[ -e ${CURDIR}/Shell.efi ]] && cp ${CURDIR}/Shell.efi "$MY_TMPDIR"/boot/
 umount "$MY_TMPDIR"/boot
 
 # ------------------------------------------------------------------------------
