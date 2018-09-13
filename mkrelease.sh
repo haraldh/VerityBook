@@ -14,6 +14,7 @@ TEMP=$(
     getopt -o '' \
         --long certdir: \
         --long nosign \
+        --long notar \
 	--long help \
         -- "$@"
     )
@@ -34,6 +35,10 @@ while true; do
             ;;
         '--nosign')
 	    NOSIGN="1"
+            shift 1; continue
+            ;;
+        '--notar')
+	    NOTAR="1"
             shift 1; continue
             ;;
         '--help')
@@ -65,6 +70,6 @@ IMAGE="${BASEDIR}/$(jq -r '.name' ${JSON})-$(jq -r '.version' ${JSON})"
     [[ -f sha512sum.txt.sig ]] || gpg2 --detach-sign sha512sum.txt
 )
 
-if ! [[ -e "$IMAGE".tgz ]]; then
+if ! [[ $NOTAR ]] && ! [[ -e "$IMAGE".tgz ]]; then
     tar cf - -C "${IMAGE%/*}" "${IMAGE##*/}" | pigz -c > "$IMAGE".tgz
 fi
