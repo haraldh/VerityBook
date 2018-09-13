@@ -157,9 +157,15 @@ mkdir "$MY_TMPDIR"/boot
 mount ${DEV_PART}1 "$MY_TMPDIR"/boot
 
 mkdir -p "$MY_TMPDIR"/boot/EFI/Boot
-cp "$SOURCE"/bootx64.efi "$MY_TMPDIR"/boot/EFI/Boot/bootx64.efi
+mkdir -p "$MY_TMPDIR"/boot/EFI/FedoraBook
 [[ -e ${CURDIR}/LockDown.efi ]] && cp ${CURDIR}/LockDown.efi "$MY_TMPDIR"/boot/
-[[ -e ${CURDIR}/Shell.efi ]] && cp ${CURDIR}/Shell.efi "$MY_TMPDIR"/boot/
+if [[ -e ${CURDIR}/Shell.efi ]] && [[ -e ${CURDIR}/startup.nsh ]]; then
+    cp ${CURDIR}/startup.nsh "$MY_TMPDIR"/boot/
+    cp ${CURDIR}/Shell.efi "$MY_TMPDIR"/boot/EFI/Boot/bootx64.efi
+    cp "$SOURCE"/bootx64.efi "$MY_TMPDIR"/boot/EFI/FedoraBook/bootx64.efi
+else
+    cp "$SOURCE"/bootx64.efi "$MY_TMPDIR"/boot/EFI/Boot/bootx64.efi
+fi
 umount "$MY_TMPDIR"/boot
 
 # ------------------------------------------------------------------------------
