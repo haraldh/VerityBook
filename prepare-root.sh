@@ -469,9 +469,7 @@ mv -v "$sysroot"/boot/*/*/initrd "$MY_TMPDIR"/
 cp "$sysroot"/lib/modules/*/vmlinuz "$MY_TMPDIR"/linux
 
 rm -fr "$sysroot"/{boot,root}
-ln -sfnr "$sysroot"/data/root "$sysroot"/root
-mkdir -p "$sysroot"/usr/etc
-mv "$sysroot"/etc/yum.repos.d "$sysroot"/usr/etc/yum.repos.d
+ln -sfnr "$sysroot"/var/root "$sysroot"/root
 mkdir "$sysroot"/efi
 rm -fr "$sysroot"/var/*
 rm -fr "$sysroot"/home/*
