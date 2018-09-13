@@ -333,6 +333,7 @@ if [[ -d "$sysroot"/etc/NetworkManager ]]; then
     ln -fsnr "$sysroot"/var/etc/NetworkManager "$sysroot"/etc/NetworkManager
     cat >> "$sysroot"/usr/lib/tmpfiles.d/NetworkManager.conf <<EOF
 d /var/lib/NetworkManager 0755 root root - -
+C /var/etc/NetworkManager - - - - -
 d /run/NetworkManager 0755 root root - -
 EOF
     rm -fr "$sysroot"/etc/sysconfig/network-scripts
