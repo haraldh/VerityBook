@@ -159,19 +159,19 @@ mkdir -p boot
 mount ${OUT}1 boot
 mkdir -p boot/EFI/FedoraBook
 cp /efi/EFI/Boot/bootx64.efi boot/EFI/FedoraBook/1.efi
+[[ -e /efi/Lockdown.efi ]] && cp /efi/Lockdown.efi boot
+[[ -e /efi/Shell.efi ]] && cp /efi/Lockdown.efi boot/EFI/Boot/bootx64.efi
+
 umount boot
 rmdir boot
 
 if ! [[ $UPDATE ]]; then
-    if ! [[ $(efibootmgr) == *FED1* ]]; then
-        efibootmgr -C -b FED1 -d ${OUT_DEV} -p 1 -L "FedoraBook 1" -l '\efi\fedorabook\1.efi'
-        efibootmgr -C -b FED2 -d ${OUT_DEV} -p 1 -L "FedoraBook 2" -l '\efi\fedorabook\2.efi'
-        efibootmgr -C -b FED3 -d ${OUT_DEV} -p 1 -L "FedoraBook Old 1" -l '\efi\fedorabook\_1.efi'
-        efibootmgr -C -b FED4 -d ${OUT_DEV} -p 1 -L "FedoraBook Old 2" -l '\efi\fedorabook\_2.efi'
-    fi
-
-    BOOT_ORDER=$(efibootmgr | grep BootOrder: | { read _ a; echo "$a"; })
-    if ! [[ $BOOT_ORDER == *FED1* ]]; then
-        efibootmgr -o "FED1,FED2,FED3,FED4,$BOOT_ORDER"
-    fi
+    for i in FED1 FED2 FED3 FED4; do
+        efibootmgr -B -b $i
+    done
+    efibootmgr -C -b FED1 -d ${OUT_DEV} -p 1 -L "FedoraBook 1" -l '\efi\fedorabook\1.efi'
+    efibootmgr -C -b FED2 -d ${OUT_DEV} -p 1 -L "FedoraBook 2" -l '\efi\fedorabook\2.efi'
+    efibootmgr -C -b FED3 -d ${OUT_DEV} -p 1 -L "FedoraBook Old 1" -l '\efi\fedorabook\_1.efi'
+    efibootmgr -C -b FED4 -d ${OUT_DEV} -p 1 -L "FedoraBook Old 2" -l '\efi\fedorabook\_2.efi'
+    efibootmgr -o "FED1,FED2,FED3,FED4,$BOOT_ORDER"
 fi
