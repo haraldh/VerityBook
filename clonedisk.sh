@@ -133,7 +133,7 @@ if [[ ${OUT#/dev/nvme} != $OUT ]]; then
     OUT="${OUT}p"
 fi
 
-dd if=${IN}2 of=${OUT}$2 status=progress
+dd if=${IN}2 of=${OUT}2 status=progress
 sfdisk --part-uuid ${OUT_DEV} 2 $(blkid -o value -s PARTUUID ${IN}2)
 
 if ! [[ $UPDATE ]]; then
