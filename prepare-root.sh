@@ -524,6 +524,11 @@ mv "$MY_TMPDIR"/root-hash.txt \
    "$MY_TMPDIR"/initrd \
    "$OUTDIR"
 
+for i in LockDown.efi Shell.efi startup.nsh; do
+    [[ -e "${BASEDIR}"/$i ]] || continue
+    cp "$i" "$OUTDIR"
+done
+
 chown -R "$USER" "$OUTDIR"
 
 cat > "${OUTDIR%/*}/${NAME}-latest.json" <<EOF

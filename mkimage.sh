@@ -158,10 +158,10 @@ mount ${DEV_PART}1 "$MY_TMPDIR"/boot
 
 mkdir -p "$MY_TMPDIR"/boot/EFI/Boot
 mkdir -p "$MY_TMPDIR"/boot/EFI/FedoraBook
-[[ -e ${CURDIR}/LockDown.efi ]] && cp ${CURDIR}/LockDown.efi "$MY_TMPDIR"/boot/
-if [[ -e ${CURDIR}/Shell.efi ]] && [[ -e ${CURDIR}/startup.nsh ]]; then
-    cp ${CURDIR}/startup.nsh "$MY_TMPDIR"/boot/
-    cp ${CURDIR}/Shell.efi "$MY_TMPDIR"/boot/EFI/Boot/bootx64.efi
+if [[ -e "${SOURCE}"/Shell.efi ]] && [[ -e "${SOURCE}"/startup.nsh ]] && [[ -e "${SOURCE}"/LockDown.efi ]]; then
+    cp "${SOURCE}"/startup.nsh "$MY_TMPDIR"/boot/
+    cp "${SOURCE}"/LockDown.efi "$MY_TMPDIR"/boot/
+    cp "${SOURCE}"/Shell.efi "$MY_TMPDIR"/boot/EFI/Boot/bootx64.efi
     cp "$SOURCE"/bootx64.efi "$MY_TMPDIR"/boot/EFI/FedoraBook/bootx64.efi
 else
     cp "$SOURCE"/bootx64.efi "$MY_TMPDIR"/boot/EFI/Boot/bootx64.efi
