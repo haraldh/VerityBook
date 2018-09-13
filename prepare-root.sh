@@ -285,6 +285,7 @@ chroot  "$sysroot" \
 	--install /usr/lib/systemd/system/basic.target.wants/rngd.service
 
 rm "$sysroot"/pre-pivot.sh
+rm -fr "$sysroot"/overlay
 
 umount "$sysroot"/var/cache/dnf
 
