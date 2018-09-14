@@ -388,7 +388,8 @@ ln -fsnr "$sysroot"/var/adjtime "$sysroot"/etc/adjtime
 sed -i -e 's#/etc/locale.conf#/var/locale.conf#g;s#/etc/vconsole.conf#/var/vconsole.conf#g' "$sysroot"/usr/lib/systemd/systemd-localed
 sed -i -e 's#/etc/adjtime#/var/adjtime#g;s#/etc/localtime#/var/localtime#g' \
     "$sysroot"/usr/lib/systemd/systemd-timedated \
-    "$sysroot"/usr/lib/systemd/libsystemd-shared*.so
+    "$sysroot"/usr/lib/systemd/libsystemd-shared*.so \
+    "$sysroot"/lib*/libc.so.*
 
 sed -i -e 's#ReadWritePaths=/etc#ReadWritePaths=/var#g' "$sysroot"/lib/systemd/system/systemd-localed.service
 sed -i -e 's#ReadWritePaths=/etc#ReadWritePaths=/var#g' "$sysroot"/lib/systemd/system/systemd-timedated.service
@@ -474,10 +475,10 @@ ln -sfnr "$sysroot"/var/root "$sysroot"/root
 mkdir "$sysroot"/efi
 rm -fr "$sysroot"/var/*
 rm -fr "$sysroot"/home/*
+rm -f "$sysroot"/etc/yum.repos.d/*
 mkdir -p "$sysroot"/home
 rm -fr "$sysroot"/etc/selinux
 mkdir "$sysroot"/data
-
 for i in "$sysroot"/{dev,sys,proc,run}; do
     [[ -d "$i" ]] && mountpoint -q "$i" && umount "$i"
 done
