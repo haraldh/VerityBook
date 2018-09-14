@@ -18,7 +18,7 @@ TEMP=$(
         --long dir: \
         --long force \
         --long nocheck \
-	--long help \
+	    --long help \
         -- "$@"
     )
 
@@ -33,20 +33,20 @@ unset TEMP
 while true; do
     case "$1" in
         '--dir')
-	    USE_DIR="$(readlink -e $2)"
+	        USE_DIR="$(readlink -e $2)"
             shift 2; continue
             ;;
         '--force')
-	    FORCE="y"
+	        FORCE="y"
             shift 1; continue
             ;;
         '--nocheck')
-	    NO_CHECK="y"
+	        NO_CHECK="y"
             shift 1; continue
             ;;
         '--help')
-	    usage
-	    exit 0
+	        usage
+	        exit 0
             ;;
         '--')
             shift
@@ -130,6 +130,8 @@ fi
 
 [[ ${NAME} ]]
 
+mkdir -p /var/cache/${NAME}
+
 readonly MY_TMPDIR="$(mktemp -p "/var/cache/${NAME}/" -d)"
 [ -d "$MY_TMPDIR" ] || {
     printf "%s\n" "${PROGNAME}: mktemp -p '/var/cache/${NAME}/' -d failed." >&2
@@ -177,7 +179,24 @@ cd ${IMAGE}
 if ! [[ $NO_CHECK ]]; then
     # check integrity
     gpg2 --no-default-keyring --keyring /etc/pki/${NAME}/GPG-KEY --verify sha512sum.txt.sig sha512sum.txt
-    sha512sum -c sha512sum.txt
+    sha512sum --strict -c sha512sum.txt
+    unset FILES; declare -A FILES
+    while read _ file || [[ $file ]]; do
+        FILES["$file"]="1"
+    done < sha512sum.txt
+    for i in $(ls -1); do
+        [[ $i == sha512sum.txt ]] && continue
+        [[ $i == sha512sum.txt.sig ]] && continue
+        if ! [[ ${FILES["$i"]} ]]; then
+            echo "File $i not signed"
+            exit 1
+        fi
+    done
+fi
+
+if [[ ${FILES["update.sh"]} ]] && [[ -e ./update.sh ]]; then
+ . ./update.sh
+ exit $?
 fi
 
 dd status=progress if=root.img of=${ROOT_DEV}-part${NEW_ROOT_PARTNO}
