@@ -128,8 +128,25 @@ if ! [[ $NEW_ROOT_PARTNO ]] || ! [[ $ROOT_PARTNO ]] || ! [[ $ROOT_DEV ]]; then
     exit 1
 fi
 
-mkdir -p /var/cache/${NAME}
-cd /var/cache/${NAME}
+[[ ${NAME} ]]
+
+readonly MY_TMPDIR="$(mktemp -p "/var/cache/${NAME}/" -d)"
+[ -d "$MY_TMPDIR" ] || {
+    printf "%s\n" "${PROGNAME}: mktemp -p '/var/cache/${NAME}/' -d failed." >&2
+    exit 1
+}
+
+# clean up after ourselves no matter how we die.
+trap '
+    ret=$?;
+    [[ $MY_TMPDIR ]] && rm -rf --one-file-system -- "$MY_TMPDIR"
+    exit $ret;
+    ' EXIT
+
+# clean up after ourselves no matter how we die.
+trap 'exit 1;' SIGINT
+
+cd "$MY_TMPDIR"
 
 if ! [[ $USE_DIR ]]; then
     curl ${BASEURL}/${NAME}-latest.json --output ${NAME}-latest.json
