@@ -16,7 +16,7 @@ This is WIP. Please test and report issues, comments or missing components on ht
 
 ## Goals
 - secure boot to the login screen
-- immutable /usr and maybe /etc
+- immutable base OS
 - ensured integrity to the login screen
 - encrypted volatile data
 - A/B boot switching for updates
@@ -26,8 +26,17 @@ This is WIP. Please test and report issues, comments or missing components on ht
 - optional: frequent reencryption of the data partition
 
 ## Non-Goals
-- can't secure against someone writing anything to disk
-- can't secure against someone scraping secret keys from the kernel
+- can't secure against a remote attacker writing anything to disk
+- can't secure against a remote attacker scraping secret keys from the kernel
+
+## FAQ
+### Isn't encrypting everything enough?
+If a remote attacker modifies your binaries in /usr/bin, you cannot be sure of a secure boot 
+to the login screen anymore.
+
+### Why readonly /etc?
+A remote attacker modifying /etc can completely change your boot sequence and you cannot be sure of a 
+secure boot to the login screen anymore.
 
 ## TODO
 - merge mkimage.sh and clonedisk
@@ -66,17 +75,48 @@ This is WIP. Please test and report issues, comments or missing components on ht
 
 ## Create
 
+### Export your GPG Key
+
+```bash
+$ gpg2 --export --export-options export-minimal <KEYNAME> > FedoraBook.gpg
+```
+
+### Prepare the Image
+
 ```bash
 $ sudo ./prepare-root.sh \
   --releasever 29 \
   --pkglist pkglist.txt \
   --excludelist excludelist.txt \
-  --logo logo.bmp --name FEDORABOOK \
-  --outdir <IMGDIR>
+  --name FedoraBook \
+  --logo logo.bmp
 ```
+
+This will create the following files and directories:
+- ```FedoraBook``` - keep this directory around for updates (includes needed passwd/group history)
+- ```FedoraBook-29.<datetime>``` - the resulting <IMGDIR>
+- ```FedoraBook-latest.json``` - a metadata file for the update server
 
 or download a prebuilt [image](https://harald.fedorapeople.org/downloads/fedorabook.tgz),
 unpack and use this as ```<IMGDIR>```.
+
+## Sign the release
+
+Get [efitools](https://github.com/haraldh/efitools.git). Compile and create your keys.
+Copy ```LockDown.efi``` ```DB.key``` ```DB.crt``` from efitools to the fedorabook directory.
+
+Optionally copy ```Shell.efi``` (might be ```/usr/share/edk2/ovmf/Shell.efi```) to the fedorabook directory.
+
+
+```bash
+$ sudo ./mkrelease.sh FedoraBook-latest.json
+```
+
+then upload to your update server:
+```bash
+$ TARBALL="$(jq -r '.name' FedoraBook-latest.json)-$(jq -r '.version' FedoraBook-latest.json)".tgz
+$ scp "$TARBALL" FedoraBook-latest.json <DESTINATION> 
+```
 
 
 ## QEMU disk image
@@ -84,42 +124,70 @@ unpack and use this as ```<IMGDIR>```.
 $ sudo ./mkimage.sh <IMGDIR> image.raw 
 ```
 
+or with the json file:
+```bash
+$ sudo ./mkimage.sh FedoraBook-latest.json image.raw 
+```
+
 ## USB stick
 ```bash
 $ sudo ./mkimage.sh <IMGDIR> /dev/disk/by-path/pci-…-usb…
+```
+
+or with the json file:
+```bash
+$ sudo ./mkimage.sh FedoraBook-latest.json /dev/disk/by-path/pci-…-usb…
 ```
 
 ## Install from USB stick
 
 **Warning**: This will wipe the entire target disk
 
+### Preparation
+
 - Enter BIOS
    * turn on UEFI boot
    * turn on TPM2
+   * set a BIOS admin password
 - Enter BIOS boot menu
 - Select USB stick
 - Login (user: admin, pw: admin)
 - Start gnome-terminal
-- ```$ sudo clonedisk <usb stick device> <harddisk device>```
+
+### Installation
+
+If you can encrypt your disk via the BIOS, do so.
+
+If you cannot:
+
+- use the option ```--crypttpm2```, if you have a TPM2 chip
+- use the option ```--crypt``` otherwise
+
+```$ sudo clonedisk <options> <usb stick device> <harddisk device>```
+
+### Post
+
 - reboot
 - remove stick
 
-The first boot takes longer as the system tries to bind the LUKS to the TPM2 on the machine. It also populates /var with the missing directories.
+The first boot takes longer as the system tries to bind the LUKS to the TPM2 on the machine.
+It also populates ```/var``` with the missing directories.
 
 You can always clear the data partition via:
 ```
-# wipefs --all --force /dev/<disk partition 7>
+# wipefs --all --force /dev/<disk partition 5>
 ```
 and then either make a xfs
 ```
-# mkfs.xfs -L data /dev/<disk partition 7>
+# mkfs.xfs -L data /dev/<disk partition 5>
 ```
-or luks
+or LUKS
 ```
-# echo -n "zero key" | cryptsetup luksFormat --type luks2 /dev/<disk partition 7> /dev/stdin
+# echo -n "zero key" | cryptsetup luksFormat --type luks2 /dev/<disk partition 4> /dev/stdin
+# echo -n "zero key" | cryptsetup luksFormat --type luks2 /dev/<disk partition 5> /dev/stdin
 ```
 
-On the media created with mkimage.sh, this is partition number *4*.
+On the media created with mkimage.sh, this is partition number *3*.
 
 ## Post Boot
 
@@ -129,4 +197,24 @@ $ sudo mkdir /var/log/journal
 ```
 
 ### LUKS
-Set a new luks password. Initial password is 'zero key'
+Set a new LUKS password, if you installed with ```--crypt``` or ```--crypttpm2```.
+The initial password is ```zero key```.
+
+## Updating
+
+```bash
+# systemd-inhibit update <UPDATE-URL>
+```
+
+## Secure Boot
+
+**Warning**: This will wipe all the secure boot keys.
+Make sure the BIOS contains an option to restore the default keys. 
+
+- Enter BIOS
+   * turn on Secure Boot
+   * turn on Setup Mode
+- Boot from stick with Shell.efi and LockDown.efi
+- Execute LockDown.efi
+- reset
+- Secure Boot into signed FedoraBook release
