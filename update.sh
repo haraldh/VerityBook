@@ -176,3 +176,13 @@ cp bootx64.efi /efi/EFI/${NAME}/${NEW_ROOT_NUM}.efi
 
 mv /efi/EFI/${NAME}/${OLD_ROOT_NUM}.efi /efi/EFI/${NAME}/_${OLD_ROOT_NUM}.efi || :
 rm -f /efi/EFI/${NAME}/_${NEW_ROOT_NUM}.efi
+
+BOOT_ORDER=$(efibootmgr | grep BootOrder: | { read _ a; echo "$a"; })
+BOOT_ORDER=${BOOT_ORDER//FED?,}
+BOOT_ORDER=${BOOT_ORDER//FED?}
+BOOT_ORDER=${BOOT_ORDER%,}
+BOOT_ORDER=${BOOT_ORDER#,}
+
+efibootmgr -o "FED${NEW_ROOT_NUM},FED$((${OLD_ROOT_NUM}+2)),$BOOT_ORDER"
+
+echo "Update successful. Reboot your machine to use it."
