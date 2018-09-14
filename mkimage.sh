@@ -70,6 +70,10 @@ done
 SOURCE=$(readlink -e "$1")
 IMAGE=$(readlink -f "$2")
 
+if ! [[ -d $SOURCE ]]; then
+    SOURCE="${SOURCE%/*}/$(jq -r '.name' "$SOURCE")-$(jq -r '.version' "$SOURCE")"
+fi
+
 if ! [[ -d $SOURCE ]] || ! [[ $IMAGE ]]; then
     usage
     exit 1
