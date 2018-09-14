@@ -17,12 +17,13 @@ EOF
 
 TEMP=$(
     getopt -o '' \
-        --long crypt \
-        --long crypttpm2 \
+    --long crypt \
+    --long crypttpm2 \
 	--long simple \
 	--long update \
+	--long efishell \
 	--long help \
-        -- "$@"
+    -- "$@"
     )
 
 if (( $? != 0 )); then
@@ -36,25 +37,29 @@ unset TEMP
 
 while true; do
     case "$1" in
+        '--efishell')
+	        USE_EFISHELL="y"
+            shift 1; continue
+            ;;
         '--crypt')
-	    USE_CRYPT="y"
+	        USE_CRYPT="y"
             shift 1; continue
             ;;
         '--crypttpm2')
-	    USE_TPM="y"
+	        USE_TPM="y"
             shift 1; continue
             ;;
         '--simple')
-	    SIMPLE="y"
+	        SIMPLE="y"
             shift 1; continue
             ;;
         '--update')
-	    UPDATE="y"
+	        UPDATE="y"
             shift 1; continue
             ;;
         '--help')
-	    usage
-	    exit 0
+	        usage
+	        exit 0
             ;;
         '--')
             shift
@@ -158,18 +163,20 @@ if ! [[ $UPDATE ]]; then
     mkfs.fat -nEFI -F32 ${DEV_PART}1
 fi
 mkdir "$MY_TMPDIR"/boot
-mount ${DEV_PART}1 "$MY_TMPDIR"/boot
+mount "${DEV_PART}1" "$MY_TMPDIR"/boot
 
 mkdir -p "$MY_TMPDIR"/boot/EFI/Boot
 mkdir -p "$MY_TMPDIR"/boot/EFI/FedoraBook
-if [[ -e "${SOURCE}"/Shell.efi ]] && [[ -e "${SOURCE}"/startup.nsh ]] && [[ -e "${SOURCE}"/LockDown.efi ]]; then
-    cp "${SOURCE}"/startup.nsh "$MY_TMPDIR"/boot/
-    cp "${SOURCE}"/LockDown.efi "$MY_TMPDIR"/boot/
+
+if [[ $USE_EFISHELL ]]; then
+    [[ -e "${SOURCE}"/startup.nsh ]] && cp "${SOURCE}"/startup.nsh "$MY_TMPDIR"/boot/
+    [[ -e "${SOURCE}"/LockDown.efi ]] && cp "${SOURCE}"/LockDown.efi "$MY_TMPDIR"/boot/
     cp "${SOURCE}"/Shell.efi "$MY_TMPDIR"/boot/EFI/Boot/bootx64.efi
     cp "$SOURCE"/bootx64.efi "$MY_TMPDIR"/boot/EFI/FedoraBook/bootx64.efi
 else
     cp "$SOURCE"/bootx64.efi "$MY_TMPDIR"/boot/EFI/Boot/bootx64.efi
 fi
+
 umount "$MY_TMPDIR"/boot
 
 # ------------------------------------------------------------------------------
@@ -179,7 +186,7 @@ dd if="$SOURCE"/root.img of=${DEV_PART}2 status=progress
 # ------------------------------------------------------------------------------
 # data
 if ! [[ $UPDATE ]]; then
-    mkfs.xfs -L data ${DEV_PART}3
+    mkfs.xfs -L data "${DEV_PART}3"
 fi
 # ------------------------------------------------------------------------------
 # DONE
