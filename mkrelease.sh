@@ -73,8 +73,10 @@ IMAGE="${BASEDIR}/$(jq -r '.name' ${JSON})-$(jq -r '.version' ${JSON})"
             echo "Need --dbkey KEY --dbcrt CRT options"
             exit 1
         fi
-        sbsign --key "$DBKEY" --cert "$DBCRT" --output bootx64-signed.efi bootx64.efi
-        mv bootx64-signed.efi bootx64.efi
+        if ! sbverify --cert "$DBCRT" bootx64.efi &>/dev/null ; then
+            sbsign --key "$DBKEY" --cert "$DBCRT" --output bootx64-signed.efi bootx64.efi
+            mv bootx64-signed.efi bootx64.efi
+        fi
     fi
     [[ -f sha512sum.txt ]] || sha512sum * > sha512sum.txt
     [[ -f sha512sum.txt.sig ]] || gpg2 --detach-sign sha512sum.txt
