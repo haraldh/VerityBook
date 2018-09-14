@@ -28,6 +28,7 @@ fedpkg
 firefox
 firewalld-filesystem
 flatpak
+fwupdate
 @Fonts
 gawk
 gcc
