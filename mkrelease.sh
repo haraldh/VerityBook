@@ -6,16 +6,18 @@ Usage: $PROGNAME [OPTION]
 
   -h, --help             Display this help
   --nosign               Don't sign the EFI executable
-  --certdir DIR          Use DIR as certification CA for EFI signing
+  --dbkey KEY            Use KEY as certification key for EFI signing
+  --dbcrt CRT            Use CRT as certification for EFI signing
 EOF
 }
 
 TEMP=$(
     getopt -o '' \
-        --long certdir: \
+        --long dbkey: \
+        --long dbcrt: \
         --long nosign \
         --long notar \
-	--long help \
+    --long help \
         -- "$@"
     )
 
@@ -29,21 +31,25 @@ unset TEMP
 
 while true; do
     case "$1" in
-        '--certdir')
-	    CERTDIR="$(readlink -e $2)"
+        '--dbkey')
+            DBKEY="$(readlink -e $2)"
+            shift 2; continue
+            ;;
+        '--dbcrt')
+            DBCRT="$(readlink -e $2)"
             shift 2; continue
             ;;
         '--nosign')
-	    NOSIGN="1"
+            NOSIGN="1"
             shift 1; continue
             ;;
         '--notar')
-	    NOTAR="1"
+            NOTAR="1"
             shift 1; continue
             ;;
         '--help')
-	    usage
-	    exit 0
+            usage
+            exit 0
             ;;
         '--')
             shift
@@ -63,7 +69,11 @@ IMAGE="${BASEDIR}/$(jq -r '.name' ${JSON})-$(jq -r '.version' ${JSON})"
 (
     cd "$IMAGE"
     if ! [[ $NOSIGN ]]; then
-        pesign -c DB -s ${CERTDIR:+--certdir $CERTDIR} -i bootx64.efi -o bootx64-signed.efi
+        if ! [[ $DBKEY ]] || ! [[ $DBCRT ]]; then
+            echo "Need --dbkey KEY --dbcrt CRT options"
+            exit 1
+        fi
+        sbsign --key "$DBKEY" --cert "$DBCRT" --output bootx64-signed.efi bootx64.efi
         mv bootx64-signed.efi bootx64.efi
     fi
     [[ -f sha512sum.txt ]] || sha512sum * > sha512sum.txt
