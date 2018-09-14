@@ -85,11 +85,12 @@ $ gpg2 --export --export-options export-minimal <KEYNAME> > FedoraBook.gpg
 
 ```bash
 $ sudo ./prepare-root.sh \
-  --releasever 29 \
   --pkglist pkglist.txt \
   --excludelist excludelist.txt \
   --name FedoraBook \
-  --logo logo.bmp
+  --logo logo.bmp \
+  --reposd <REPOSDIR> \
+  --releasever 29
 ```
 
 This will create the following files and directories:
