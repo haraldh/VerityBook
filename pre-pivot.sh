@@ -21,7 +21,7 @@ get_disk() {
 
 udevadm settle
 
-BOOTDISK=$(get_disk $(bootdisk)) 
+BOOTDISK=$(get_disk $(bootdisk))
 [[ $BOOTDISK ]] || die "No boot disk found"
 
 unset FOUND
@@ -107,17 +107,24 @@ if [[ $(blkid -o value -s TYPE "$datadev") != "xfs" ]]; then
     mkfs.xfs -f -L data "$datadev"
 fi
 
-mount -o discard $datadev /sysroot/data || die "Failed to mount $datadev"
+mount -o discard $datadev /sysroot/mnt || die "Failed to mount $datadev"
 
-[[ -d /sysroot/data/var  ]] || mkdir /sysroot/data/var
-[[ -d /sysroot/data/home ]] || mkdir /sysroot/data/home
-
-mount -o bind /sysroot/data/var /sysroot/var
-mount -o bind /sysroot/data/home /sysroot/home
-
-for i in passwd shadow group gshadow subuid subgid; do
-    [[ -f /sysroot/var/$i ]] && continue
-    cp -a /sysroot/usr/share/factory/var/$i /sysroot/var/$i
+for i in var home cfg; do
+    if ! [[ -d /sysroot/mnt/$i ]]; then
+        mkdir /sysroot/mnt/$i
+        FIRST_TIME=1
+    fi
 done
 
-chroot /sysroot /usr/bin/systemd-tmpfiles --create --remove --boot --exclude-prefix=/dev --exclude-prefix=/run --exclude-prefix=/tmp --exclude-prefix=/etc 2>&1 | vinfo
+mount -o bind /sysroot/mnt/var /sysroot/var
+mount -o bind /sysroot/mnt/home /sysroot/home
+mount -o bind /sysroot/mnt/cfg /sysroot/cfg
+umount -l /sysroot/mnt
+
+#for i in passwd shadow group gshadow subuid subgid; do
+#    [[ -f /sysroot/cfg/$i ]] && continue
+#    cp -a /sysroot/usr/share/factory/cfg/$i /sysroot/cfg/$i
+#done
+if [[ $FIRST_TIME ]]; then
+    chroot /sysroot bash -c '/usr/bin/systemd-tmpfiles --create --remove --boot --exclude-prefix=/dev --exclude-prefix=/run --exclude-prefix=/tmp  --exclude-prefix=/etc 2>&1;  restorecon -R -v /cfg /var 2>&1'| vinfo
+fi

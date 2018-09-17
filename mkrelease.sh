@@ -66,21 +66,24 @@ JSON="$(realpath -e $1)"
 BASEDIR="${JSON%/*}"
 IMAGE="${BASEDIR}/$(jq -r '.name' ${JSON})-$(jq -r '.version' ${JSON})"
 
-(
-    cd "$IMAGE"
-    if ! [[ $NOSIGN ]]; then
-        if ! [[ $DBKEY ]] || ! [[ $DBCRT ]]; then
-            echo "Need --dbkey KEY --dbcrt CRT options"
-            exit 1
-        fi
-        if ! sbverify --cert "$DBCRT" bootx64.efi &>/dev/null ; then
-            sbsign --key "$DBKEY" --cert "$DBCRT" --output bootx64-signed.efi bootx64.efi
-            mv bootx64-signed.efi bootx64.efi
-        fi
+pushd "$IMAGE"
+if ! [[ $NOSIGN ]]; then
+    if ! [[ $DBKEY ]] || ! [[ $DBCRT ]]; then
+        echo "Need --dbkey KEY --dbcrt CRT options"
+        exit 1
     fi
-    [[ -f sha512sum.txt ]] || sha512sum * > sha512sum.txt
-    [[ -f sha512sum.txt.sig ]] || gpg2 --detach-sign sha512sum.txt
-)
+    for i in $(find . -type f -name '*.efi'); do
+        [[ -f "$i" ]] || continue
+        if ! sbverify --cert "$DBCRT" "$i" &>/dev/null ; then
+            sbsign --key "$DBKEY" --cert "$DBCRT" --output "${i}signed" "$i"
+            mv "${i}signed" "$i"
+        fi
+    done
+fi
+[[ -f sha512sum.txt ]] || sha512sum $(find . -type f) > sha512sum.txt
+[[ -f sha512sum.txt.sig ]] || gpg2 --detach-sign sha512sum.txt
+
+popd
 
 if ! [[ $NOTAR ]] && ! [[ -e "$IMAGE".tgz ]]; then
     tar cf - -C "${IMAGE%/*}" "${IMAGE##*/}" | pigz -c > "$IMAGE".tgz

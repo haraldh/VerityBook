@@ -3,7 +3,5 @@ systemd-bootchart
 grubby
 grub*
 plymouth
-selinux-policy-targeted
-libselinux-utils
 httpd
 gnome-boxes

@@ -158,7 +158,7 @@ fi
 mkdir -p boot
 mount ${OUT}1 boot
 mkdir -p boot/EFI/FedoraBook
-cp /efi/EFI/FedoraBook/bootx64.efi boot/EFI/FedoraBook/1.efi
+cp /efi/EFI/FedoraBook/1.efi boot/EFI/FedoraBook/1.efi
 [[ -e /efi/Lockdown.efi ]] && cp /efi/Lockdown.efi boot
 [[ -e /efi/Shell.efi ]] && cp /efi/Lockdown.efi boot/EFI/Boot/bootx64.efi
 

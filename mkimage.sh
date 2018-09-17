@@ -169,12 +169,13 @@ mkdir -p "$MY_TMPDIR"/boot/EFI/Boot
 mkdir -p "$MY_TMPDIR"/boot/EFI/FedoraBook
 
 if [[ $USE_EFISHELL ]]; then
-    [[ -e "${SOURCE}"/startup.nsh ]] && cp "${SOURCE}"/startup.nsh "$MY_TMPDIR"/boot/
-    [[ -e "${SOURCE}"/LockDown.efi ]] && cp "${SOURCE}"/LockDown.efi "$MY_TMPDIR"/boot/
-    cp "${SOURCE}"/Shell.efi "$MY_TMPDIR"/boot/EFI/Boot/bootx64.efi
-    cp "$SOURCE"/bootx64.efi "$MY_TMPDIR"/boot/EFI/FedoraBook/bootx64.efi
+    [[ -e "${SOURCE}"/efi/startup.nsh ]] && cp "${SOURCE}"/efi/startup.nsh "$MY_TMPDIR"/boot/
+    [[ -e "${SOURCE}"/efi/LockDown.efi ]] && cp "${SOURCE}"/efi/LockDown.efi "$MY_TMPDIR"/boot/
+    cp "${SOURCE}"/efi/Shell.efi "$MY_TMPDIR"/boot/EFI/Boot/bootx64.efi
+    cp "$SOURCE"/bootx64.efi "$MY_TMPDIR"/boot/EFI/FedoraBook/1.efi
 else
     cp "$SOURCE"/bootx64.efi "$MY_TMPDIR"/boot/EFI/Boot/bootx64.efi
+    cp "$SOURCE"/bootx64.efi "$MY_TMPDIR"/boot/EFI/FedoraBook/1.efi
 fi
 
 umount "$MY_TMPDIR"/boot

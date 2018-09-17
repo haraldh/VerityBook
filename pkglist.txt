@@ -48,6 +48,7 @@ gobject-introspection-devel
 gperf
 help2man
 iptables-devel
+iputils
 ipw2100-firmware
 ipw2200-firmware
 iscan-firmware
@@ -84,6 +85,8 @@ libseccomp-devel
 libselinux-devel
 libvirt-daemon-config-network
 libvirt-daemon-kvm
+libvirt-client
+libvirt-bash-completion
 libxkbcommon-devel
 libxslt
 linux-firmware

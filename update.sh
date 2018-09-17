@@ -184,9 +184,9 @@ if ! [[ $NO_CHECK ]]; then
     while read _ file || [[ $file ]]; do
         FILES["$file"]="1"
     done < sha512sum.txt
-    for i in $(ls -1); do
-        [[ $i == sha512sum.txt ]] && continue
-        [[ $i == sha512sum.txt.sig ]] && continue
+    for i in $(find . -type f); do
+        [[ $i == ./sha512sum.txt ]] && continue
+        [[ $i == ./sha512sum.txt.sig ]] && continue
         if ! [[ ${FILES["$i"]} ]]; then
             echo "File $i not signed"
             exit 1
@@ -209,6 +209,10 @@ sfdisk --part-uuid ${ROOT_DEV} ${NEW_ROOT_PARTNO} ${ROOT_UUID}
 # install to /efi
 mkdir -p /efi/EFI/${NAME}
 cp bootx64.efi /efi/EFI/${NAME}/${NEW_ROOT_NUM}.efi
+
+if [[ -d efi ]]; then
+    cp -vr efi/* /efi/
+fi
 
 mv /efi/EFI/${NAME}/${OLD_ROOT_NUM}.efi /efi/EFI/${NAME}/_${OLD_ROOT_NUM}.efi || :
 rm -f /efi/EFI/${NAME}/_${NEW_ROOT_NUM}.efi

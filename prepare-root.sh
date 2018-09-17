@@ -220,6 +220,11 @@ dnf -v --nogpgcheck \
     jq \
     gnupg2 \
     veritysetup \
+    policycoreutils \
+    selinux-policy-targeted \
+    selinux-policy-devel \
+    libselinux-utils \
+    audit \
     $PKGLIST
 
 for i in passwd shadow group gshadow subuid subgid; do
@@ -240,6 +245,8 @@ for i in passwd shadow group gshadow subuid subgid; do
     chown "$USER" "${BASEDIR}/${NAME}/$i"
     chmod u+r "${BASEDIR}/${NAME}/$i"
 done
+
+# chroot "$sysroot" bash -i
 
 cp "$CURDIR/clonedisk.sh" "$sysroot"/usr/bin/clonedisk
 cp "$CURDIR/update.sh" "$sysroot"/usr/bin/update
@@ -267,7 +274,8 @@ chroot  "$sysroot" \
 	dracut -N --kver $KVER --force \
 	--filesystems "squashfs vfat xfs" \
 	--add-drivers "=drivers/char/tpm" \
-	-m "bash systemd systemd-initrd modsign crypt dm kernel-modules qemu rootfs-block udev-rules dracut-systemd base fs-lib shutdown terminfo resume verity" \
+	-m "bash systemd systemd-initrd modsign crypt dm kernel-modules qemu rootfs-block" \
+	-m "udev-rules dracut-systemd base fs-lib shutdown terminfo resume verity selinux" \
 	--install "clonedisk wipefs sfdisk dd mkfs.xfs mkswap chroot mountpoint mkdir stat openssl" \
 	--install "clevis clevis-luks-bind jose clevis-encrypt-tpm2 clevis-decrypt clevis-luks-unlock clevis-decrypt-tpm2"  \
 	--install "cryptsetup tail sort pwmake mktemp swapon" \
@@ -289,7 +297,7 @@ rm -fr "$sysroot"/overlay
 
 umount "$sysroot"/var/cache/dnf
 
-mkdir -p "$sysroot"/usr/share/factory/{var/etc,home}
+mkdir -p "$sysroot"/usr/share/factory/{var,cfg}
 
 chroot "$sysroot" update-ca-trust
 
@@ -319,21 +327,21 @@ ln -fsnr "$sysroot"/usr/lib/systemd/system/dbus-broker.service "$sysroot"/etc/sy
 #---------------
 # ssh
 if [[ -d "$sysroot"/etc/ssh ]]; then
-    mv "$sysroot"/etc/ssh "$sysroot"/usr/share/factory/var/etc/ssh
-    ln -sfnr "$sysroot"/var/etc/ssh "$sysroot"/etc/ssh
+    mv "$sysroot"/etc/ssh "$sysroot"/usr/share/factory/cfg/ssh
+    ln -sfnr "$sysroot"/cfg/ssh "$sysroot"/etc/ssh
     cat >> "$sysroot"/usr/lib/tmpfiles.d/ssh.conf <<EOF
-C /var/etc/ssh - - - - -
+C /cfg/ssh - - - - -
 EOF
 fi
 
 #---------------
 # NetworkManager
 if [[ -d "$sysroot"/etc/NetworkManager ]]; then
-    mv "$sysroot"/etc/NetworkManager "$sysroot"/usr/share/factory/var/etc/
-    ln -fsnr "$sysroot"/var/etc/NetworkManager "$sysroot"/etc/NetworkManager
+    mv "$sysroot"/etc/NetworkManager "$sysroot"/usr/share/factory/cfg/
+    ln -fsnr "$sysroot"/cfg/NetworkManager "$sysroot"/etc/NetworkManager
     cat >> "$sysroot"/usr/lib/tmpfiles.d/NetworkManager.conf <<EOF
 d /var/lib/NetworkManager 0755 root root - -
-C /var/etc/NetworkManager - - - - -
+C /cfg/NetworkManager - - - - -
 d /run/NetworkManager 0755 root root - -
 EOF
     rm -fr "$sysroot"/etc/sysconfig/network-scripts
@@ -343,10 +351,10 @@ fi
 #---------------
 # libvirt
 if [[ -d "$sysroot"/etc/libvirt ]]; then
-    mv "$sysroot"/etc/libvirt "$sysroot"/usr/share/factory/var/etc/
-    ln -fsnr "$sysroot"/var/etc/libvirt "$sysroot"/etc/libvirt
+    mv "$sysroot"/etc/libvirt "$sysroot"/usr/share/factory/cfg/
+    ln -fsnr "$sysroot"/cfg/libvirt "$sysroot"/etc/libvirt
     cat >> "$sysroot"/usr/lib/tmpfiles.d/libvirt.conf <<EOF
-C /var/etc/libvirt - - - - -
+C /cfg/libvirt - - - - -
 EOF
 fi
 
@@ -355,62 +363,63 @@ fi
 ln -fsrn "$sysroot"/run/NetworkManager/resolv.conf "$sysroot"/etc/resolv.conf
 echo 'f /run/NetworkManager/resolv.conf 0755 root root - ' >> "$sysroot"/usr/lib/tmpfiles.d/resolv.conf
 
-#---------------
-# hostname
-ln -sfrn "$sysroot"/var/hostname "$sysroot"/etc/hostname
-echo "FedoraBook" > "$sysroot"/usr/share/factory/var/hostname
 
 #---------------
 # vconsole.conf
-ln -fsnr "$sysroot"/var/vconsole.conf "$sysroot"/etc/vconsole.conf
-echo -e 'FONT=latarcyrheb-sun16\nKEYMAP=us' > "$sysroot"/usr/share/factory/var/vconsole.conf
+ln -fsnr "$sysroot"/cfg/vconsole.conf "$sysroot"/etc/vconsole.conf
+echo -e 'FONT=latarcyrheb-sun16\nKEYMAP=us' > "$sysroot"/usr/share/factory/cfg/vconsole.conf
 
 #---------------
 # locale.conf
-ln -fsnr "$sysroot"/var/locale.conf "$sysroot"/etc/locale.conf
-echo 'LANG=en_US.UTF-8' > "$sysroot"/usr/share/factory/var/locale.conf
+ln -fsnr "$sysroot"/cfg/locale.conf "$sysroot"/etc/locale.conf
+echo 'LANG=en_US.UTF-8' > "$sysroot"/usr/share/factory/cfg/locale.conf
 
 #---------------
 # localtime
-mv "$sysroot"/etc/localtime "$sysroot"/usr/share/factory/var/localtime
-ln -fsnr "$sysroot"/var/localtime "$sysroot"/etc/localtime
+mv "$sysroot"/etc/localtime "$sysroot"/usr/share/factory/cfg/localtime
+ln -fsnr "$sysroot"/cfg/localtime "$sysroot"/etc/localtime
 
 #---------------
 # machine-id
 rm -f "$sysroot"/etc/machine-id
-ln -fsnr "$sysroot"/var/machine-id "$sysroot"/etc/machine-id
+ln -fsnr "$sysroot"/cfg/machine-id "$sysroot"/etc/machine-id
 
 #---------------
 # adjtime
-mv "$sysroot"/etc/adjtime "$sysroot"/usr/share/factory/var/adjtime
-ln -fsnr "$sysroot"/var/adjtime "$sysroot"/etc/adjtime
+mv "$sysroot"/etc/adjtime "$sysroot"/usr/share/factory/cfg/adjtime
+ln -fsnr "$sysroot"/cfg/adjtime "$sysroot"/etc/adjtime
 
-sed -i -e 's#/etc/locale.conf#/var/locale.conf#g;s#/etc/vconsole.conf#/var/vconsole.conf#g' "$sysroot"/usr/lib/systemd/systemd-localed
-sed -i -e 's#/etc/adjtime#/var/adjtime#g;s#/etc/localtime#/var/localtime#g' \
+sed -i -e 's#/etc/locale.conf#/cfg/locale.conf#g;s#/etc/vconsole.conf#/cfg/vconsole.conf#g;s#/etc/X11/xorg.conf.d#/cfg/X11/xorg.conf.d#g' \
+ "$sysroot"/usr/lib/systemd/systemd-localed
+
+sed -i -e 's#/etc/adjtime#/cfg/adjtime#g;s#/etc/localtime#/cfg/localtime#g' \
     "$sysroot"/usr/lib/systemd/systemd-timedated \
     "$sysroot"/usr/lib/systemd/libsystemd-shared*.so \
     "$sysroot"/lib*/libc.so.*
 
-sed -i -e 's#ReadWritePaths=/etc#ReadWritePaths=/var#g' "$sysroot"/lib/systemd/system/systemd-localed.service
-sed -i -e 's#ReadWritePaths=/etc#ReadWritePaths=/var#g' "$sysroot"/lib/systemd/system/systemd-timedated.service
+sed -i -e 's#ReadWritePaths=/etc#ReadWritePaths=/cfg#g' \
+    "$sysroot"/lib/systemd/system/systemd-localed.service \
+    "$sysroot"/lib/systemd/system/systemd-timedated.service \
+    "$sysroot"/lib/systemd/system/systemd-hostnamed.service
 
 cat >> "$sysroot"/usr/lib/tmpfiles.d/00-basics.conf <<EOF
-C /var/hostname - - - - -
-C /var/vconsole.conf - - - - -
-C /var/locale.conf - - - - -
-C /var/localtime - - - - -
-C /var/adjtime - - - - -
+C /cfg/hostname - - - - -
+C /cfg/vconsole.conf - - - - -
+C /cfg/locale.conf - - - - -
+C /cfg/localtime - - - - -
+C /cfg/adjtime - - - - -
+Z /cfg 0755 root root - -
+Z /var 0755 root root - -
 EOF
-
 
 #---------------
 # X11
 if [[ -d "$sysroot"/etc/X11/xorg.conf.d ]]; then
-    mkdir -p "$sysroot"/usr/share/factory/var/etc
-    mv "$sysroot"/etc/X11 "$sysroot"/usr/share/factory/var/etc/X11
-    ln -fsnr "$sysroot"/var/etc/X11 "$sysroot"/etc/X11
+    mkdir -p "$sysroot"/usr/share/factory/cfg
+    mv "$sysroot"/etc/X11 "$sysroot"/usr/share/factory/cfg/X11
+    ln -fsnr "$sysroot"/cfg/X11 "$sysroot"/etc/X11
     cat >> "$sysroot"/usr/lib/tmpfiles.d/X11.conf <<EOF
-C /var/etc/X11 - - - - -
+C /cfg/X11 - - - - -
 EOF
 fi
 
@@ -442,16 +451,24 @@ cat > "$sysroot"/etc/sysctl.d/inotify.conf <<EOF
 fs.inotify.max_user_watches = $((8192*10))
 EOF
 
-cat >"$sysroot"/etc/fstab <<EOF
-LABEL=data /data xfs defaults,discard 0 0
-/data/var  /var  - bind 0 0
-/data/home /home - bind 0 0
-EOF
+#---------------
+# gnome-initial-setup
+> "$sysroot"/usr/share/gnome-initial-setup/vendor.conf
+
+
+# ------------------------------------------------------------------------------
+# selinux
+sed -i -e 's#^SELINUX=.*#SELINUX=permissive#g' "$sysroot"/etc/selinux/config
+chroot "$sysroot" semanage fcontext -a -e /etc /cfg
+chroot "$sysroot" semanage fcontext -a -e /etc /usr/share/factory/etc
+chroot "$sysroot" semanage fcontext -a -e /var /usr/share/factory/var
+chroot "$sysroot" fixfiles -v -F -f relabel || :
+chroot "$sysroot" restorecon -v -R /usr/share/factory/ || :
+rm -fr "$sysroot"/var/lib/selinux
 
 #---------------
 # var
 rm -fr "$sysroot"/var/lib/rpm
-rm -fr "$sysroot"/var/lib/selinux
 rm -fr "$sysroot"/var/log/dnf*
 rm -fr "$sysroot"/var/cache/*/*
 rm -fr "$sysroot"/var/tmp/*
@@ -461,7 +478,9 @@ chroot "$sysroot" bash -c 'for i in $(find -H /var -xdev -type d); do grep " $i 
 cp -avxr "$sysroot"/var/* "$sysroot"/usr/share/factory/var/
 rm -fr "$sysroot"/usr/share/factory/var/{run,lock}
 
-chroot "$sysroot" bash -c 'for i in $(find -H /var -xdev -maxdepth 2 -mindepth 1 -type d); do echo "C $i - - - - -"; done > /usr/lib/tmpfiles.d/var-quirk.conf; :'
+chroot "$sysroot" bash -c 'for i in $(find -H /var -xdev -maxdepth 2 -mindepth 1 -type d); do echo "C $i - - - - -"; done >> /usr/lib/tmpfiles.d/var-quirk.conf; :'
+echo 'C /var/mail - - - - -' >>  "$sysroot"/usr/lib/tmpfiles.d/var-quirk.conf
+
 mv "$sysroot"/lib/tmpfiles.d-var.conf "$sysroot"/lib/tmpfiles.d/var.conf
 
 sed -i -e "s#VERSION_ID=.*#VERSION_ID=$VERSION_ID#" "$sysroot"/etc/os-release
@@ -470,6 +489,11 @@ sed -i -e "s#NAME=.*#NAME=$NAME#" "$sysroot"/etc/os-release
 mv -v "$sysroot"/boot/*/*/initrd "$MY_TMPDIR"/
 cp "$sysroot"/lib/modules/*/vmlinuz "$MY_TMPDIR"/linux
 
+if [[ -d "$sysroot"/boot/efi/EFI/fedora ]]; then
+    mkdir -p "$MY_TMPDIR"/efi/EFI
+    mv "$sysroot"/boot/efi/EFI/fedora "$MY_TMPDIR"/efi/EFI
+fi
+
 rm -fr "$sysroot"/{boot,root}
 ln -sfnr "$sysroot"/var/root "$sysroot"/root
 mkdir "$sysroot"/efi
@@ -477,12 +501,11 @@ rm -fr "$sysroot"/var/*
 rm -fr "$sysroot"/home/*
 rm -f "$sysroot"/etc/yum.repos.d/*
 mkdir -p "$sysroot"/home
-rm -fr "$sysroot"/etc/selinux
-mkdir "$sysroot"/data
+mkdir -p "$sysroot"/cfg
+
 for i in "$sysroot"/{dev,sys,proc,run}; do
     [[ -d "$i" ]] && mountpoint -q "$i" && umount "$i"
 done
-
 
 # ------------------------------------------------------------------------------
 # sysroot
@@ -504,7 +527,10 @@ IMAGE_SIZE=$(stat --printf '%s' "$MY_TMPDIR"/root.img)
 
 # ------------------------------------------------------------------------------
 # make bootx64.efi
-echo -n "lockdown=1 quiet rd.shell=0 video=efifb:nobgrt audit=0 selinux=0 verity.imagesize=$IMAGE_SIZE verity.roothash=$ROOT_HASH verity.root=PARTUUID=$ROOT_UUID verity.hashoffset=$ROOT_SIZE raid=noautodetect root=/dev/mapper/root" > "$MY_TMPDIR"/options.txt
+echo -n "lockdown=1 quiet rd.shell=0 video=efifb:nobgrt "\
+ "verity.imagesize=$IMAGE_SIZE verity.roothash=$ROOT_HASH verity.root=PARTUUID=$ROOT_UUID " \
+ "verity.hashoffset=$ROOT_SIZE raid=noautodetect root=/dev/mapper/root" > "$MY_TMPDIR"/options.txt
+
 echo -n "${NAME}-${VERSION_ID}" > "$MY_TMPDIR"/release.txt
 objcopy \
     --add-section .release="$MY_TMPDIR"/release.txt --change-section-vma .release=0x20000 \
@@ -525,9 +551,11 @@ mv "$MY_TMPDIR"/root-hash.txt \
    "$MY_TMPDIR"/initrd \
    "$OUTDIR"
 
+[[ -d "$MY_TMPDIR"/efi ]] && mv "$MY_TMPDIR"/efi "$OUTDIR"/efi
+
 for i in LockDown.efi Shell.efi startup.nsh; do
     [[ -e "${BASEDIR}"/$i ]] || continue
-    cp "$i" "$OUTDIR"
+    cp "$i" "$OUTDIR"/efi
 done
 
 chown -R "$USER" "$OUTDIR"
