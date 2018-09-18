@@ -217,7 +217,6 @@ dnf -v --nogpgcheck \
     libpwquality \
     tpm2-tss \
     ncurses-base \
-    dbus-broker \
     tar \
     gzip \
     p11-kit \
