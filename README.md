@@ -38,6 +38,8 @@ to the login screen anymore.
 A remote attacker modifying /etc can completely change your boot sequence and you cannot be sure of a 
 secure boot to the login screen anymore.
 
+All configurable files have been whitelisted and moved to /cfg.
+
 ## TODO
 - merge mkimage.sh and clonedisk
 - move all quirks from prepare-root.sh to quirks directory
@@ -48,10 +50,6 @@ secure boot to the login screen anymore.
    * UUID for unencrypted xfs
 - ensure /data to be on same disk as root
 - add "load=<efipath>" to kernel command line via efi stub
-- update mechanism
-- add proper EFI boot manager entries for A and B
-- extend efi stub for recovery boot in the old image
-- signing tools
 - add admin LUKS key via [public key](https://blog.g3rt.nl/luks-smartcard-or-token.html)
 - sssd
 - support more clevis pins and mixed pins
@@ -65,7 +63,8 @@ secure boot to the login screen anymore.
 - passwd + shadow + group + gshadow decoupled from system in /var
 - bind LUKS2 with tpm2 to machine
 - swap on LUKS2 with tpm2 (no password for resume from disk??)
-- /home and /var on single data partition
+- /home /cfg and /var on single data partition
+- Secure Boot
 
 ## Known Failures
 - no kernel command line on DELL ( you need a newer systemd https://github.com/systemd/systemd/pull/10001 )
