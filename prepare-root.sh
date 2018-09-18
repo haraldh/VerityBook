@@ -459,13 +459,21 @@ rm -f "$sysroot"/etc/systemd/system/*.wants/multipathd*
 
 # ------------------------------------------------------------------------------
 # selinux
+cp -avr "$sysroot"/usr/share/factory/cfg "$sysroot"/
+
 sed -i -e 's#^SELINUX=.*#SELINUX=permissive#g' "$sysroot"/etc/selinux/config
 chroot "$sysroot" semanage fcontext -a -e /etc /cfg
-chroot "$sysroot" semanage fcontext -a -e /etc /usr/share/factory/etc
+chroot "$sysroot" semanage fcontext -a -e /etc /usr/share/factory/cfg
 chroot "$sysroot" semanage fcontext -a -e /var /usr/share/factory/var
+for i in passwd shadow group gshadow; do
+    chroot "$sysroot" semanage fcontext -a -e /etc/$i /usr/lib/$i
+done
 chroot "$sysroot" fixfiles -v -F -f relabel || :
 chroot "$sysroot" restorecon -v -R /usr/share/factory/ || :
 rm -fr "$sysroot"/var/lib/selinux
+
+rm -fr "$sysroot"/cfg/*
+
 
 #---------------
 # var
@@ -502,7 +510,6 @@ rm -fr "$sysroot"/var/*
 rm -fr "$sysroot"/home/*
 rm -f "$sysroot"/etc/yum.repos.d/*
 mkdir -p "$sysroot"/home
-mkdir -p "$sysroot"/cfg
 
 for i in "$sysroot"/{dev,sys,proc,run}; do
     [[ -d "$i" ]] && mountpoint -q "$i" && umount "$i"
