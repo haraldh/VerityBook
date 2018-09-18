@@ -457,6 +457,9 @@ rm -f "$sysroot"/etc/systemd/system/sysinit.target.wants/lvm*
 rm -f "$sysroot"/etc/systemd/system/*.wants/multipathd*
 
 
+# DNF
+rm -f "$sysroot"/etc/systemd/system/multi-user.target.wants/dnf-makecache.timer
+
 # ------------------------------------------------------------------------------
 # selinux
 cp -avr "$sysroot"/usr/share/factory/cfg "$sysroot"/
