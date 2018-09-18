@@ -465,21 +465,21 @@ rm -fr "$sysroot"/etc/systemd/system/network-online.target.wants
 
 # ------------------------------------------------------------------------------
 # selinux
-cp -avr "$sysroot"/usr/share/factory/cfg "$sysroot"/
-
 sed -i -e 's#^SELINUX=.*#SELINUX=permissive#g' "$sysroot"/etc/selinux/config
 chroot "$sysroot" semanage fcontext -a -e /etc /cfg
 chroot "$sysroot" semanage fcontext -a -e /etc /usr/share/factory/cfg
 chroot "$sysroot" semanage fcontext -a -e /var /usr/share/factory/var
-for i in passwd shadow group gshadow; do
-    chroot "$sysroot" semanage fcontext -a -e /etc/$i /usr/lib/$i
-done
-chroot "$sysroot" fixfiles -v -F -f relabel || :
-chroot "$sysroot" restorecon -v -R /usr/share/factory/ || :
+chroot "$sysroot" semanage fcontext -a -e /root /var/root
+chroot "$sysroot" semanage fcontext -a -f f -t passwd_file_t /usr/lib/passwd
+chroot "$sysroot" semanage fcontext -a -f f -t passwd_file_t /usr/lib/group
+chroot "$sysroot" semanage fcontext -a -f f -t shadow_t /usr/lib/shadow
+chroot "$sysroot" semanage fcontext -a -f f -t shadow_t /usr/lib/gshadow
+chroot "$sysroot" semanage fcontext -a -f f -t passwd_file_t /usr/db/passwd.db
+chroot "$sysroot" semanage fcontext -a -f f -t passwd_file_t /usr/db/group.db
+chroot "$sysroot" semanage fcontext -a -f f -t shadow_t /usr/db/shadow.db
+chroot "$sysroot" semanage fcontext -a -f f -t shadow_t /usr/db/gshadow.db
+chroot "$sysroot" restorecon -v -R /usr /etc || :
 rm -fr "$sysroot"/var/lib/selinux
-
-rm -fr "$sysroot"/cfg/*
-
 
 #---------------
 # var
@@ -511,10 +511,11 @@ fi
 rm -fr "$sysroot"/{boot,root}
 ln -sfnr "$sysroot"/var/root "$sysroot"/root
 mkdir "$sysroot"/efi
-rm -fr "$sysroot"/var/*
-rm -fr "$sysroot"/home/*
+rm -fr "$sysroot"/var
+rm -fr "$sysroot"/home
 rm -f "$sysroot"/etc/yum.repos.d/*
-mkdir -p "$sysroot"/home
+mkdir -p "$sysroot"/{var,home,cfg}
+chroot "$sysroot" restorecon -v /var /home /cfg /efi|| :
 
 for i in "$sysroot"/{dev,sys/fs/selinux,sys,proc,run}; do
     [[ -d "$i" ]] && mountpoint -q "$i" && umount "$i"
