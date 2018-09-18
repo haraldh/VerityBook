@@ -107,19 +107,22 @@ if [[ $(blkid -o value -s TYPE "$datadev") != "xfs" ]]; then
     mkfs.xfs -f -L data "$datadev"
 fi
 
-mount -o discard $datadev /sysroot/mnt || die "Failed to mount $datadev"
+mkdir -p /run/initramfs/mnt
+
+mount -o discard $datadev /run/initramfs/mnt || die "Failed to mount $datadev"
 
 for i in var home cfg; do
-    if ! [[ -d /sysroot/mnt/$i ]]; then
-        mkdir /sysroot/mnt/$i
+    if ! [[ -d /run/initramfs/mnt/$i ]]; then
+        mkdir /run/initramfs/mnt/$i
         FIRST_TIME=1
     fi
 done
 
-mount -o bind /sysroot/mnt/var /sysroot/var
-mount -o bind /sysroot/mnt/home /sysroot/home
-mount -o bind /sysroot/mnt/cfg /sysroot/cfg
-umount -l /sysroot/mnt
+
+mount -o bind /run/initramfs/mnt/var /sysroot/var
+mount -o bind /run/initramfs/mnt/home /sysroot/home
+mount -o bind /run/initramfs/mnt/cfg /sysroot/cfg
+umount -l /run/initramfs/mnt
 
 #for i in passwd shadow group gshadow subuid subgid; do
 #    [[ -f /sysroot/cfg/$i ]] && continue
