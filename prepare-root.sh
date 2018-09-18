@@ -393,9 +393,10 @@ ln -fsnr "$sysroot"/cfg/adjtime "$sysroot"/etc/adjtime
 sed -i -e 's#/etc/locale.conf#/cfg/locale.conf#g;s#/etc/vconsole.conf#/cfg/vconsole.conf#g;s#/etc/X11/xorg.conf.d#/cfg/X11/xorg.conf.d#g' \
  "$sysroot"/usr/lib/systemd/systemd-localed
 
-sed -i -e 's#/etc/adjtime#/cfg/adjtime#g;s#/etc/localtime#/cfg/localtime#g' \
+sed -i -e 's#/etc/adjtime#/cfg/adjtime#g;s#/etc/localtime#/cfg/localtime#g;s#/etc/machine-id#/cfg/machine-id#g' \
     "$sysroot"/usr/lib/systemd/systemd-timedated \
     "$sysroot"/usr/lib/systemd/libsystemd-shared*.so \
+    "$sysroot"/usr/lib/systemd/systemd \
     "$sysroot"/lib*/libc.so.*
 
 sed -i -e 's#ReadWritePaths=/etc#ReadWritePaths=/cfg#g' \
