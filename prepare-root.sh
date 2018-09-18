@@ -408,8 +408,6 @@ C /cfg/vconsole.conf - - - - -
 C /cfg/locale.conf - - - - -
 C /cfg/localtime - - - - -
 C /cfg/adjtime - - - - -
-Z /cfg 0755 root root - -
-Z /var 0755 root root - -
 EOF
 
 #---------------
