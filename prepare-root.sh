@@ -403,7 +403,6 @@ sed -i -e 's#ReadWritePaths=/etc#ReadWritePaths=/cfg#g' \
     "$sysroot"/lib/systemd/system/systemd-hostnamed.service
 
 cat >> "$sysroot"/usr/lib/tmpfiles.d/00-basics.conf <<EOF
-C /cfg/hostname - - - - -
 C /cfg/vconsole.conf - - - - -
 C /cfg/locale.conf - - - - -
 C /cfg/localtime - - - - -
