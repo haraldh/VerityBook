@@ -473,16 +473,17 @@ sed -i -e 's#^SELINUX=.*#SELINUX=permissive#g' "$sysroot"/etc/selinux/config
 chroot "$sysroot" semanage fcontext -a -e /etc /cfg
 chroot "$sysroot" semanage fcontext -a -e /etc /usr/share/factory/cfg
 chroot "$sysroot" semanage fcontext -a -e /var /usr/share/factory/var
-chroot "$sysroot" semanage fcontext -a -e /root /var/root
-chroot "$sysroot" semanage fcontext -a -f f -t passwd_file_t /usr/lib/passwd
-chroot "$sysroot" semanage fcontext -a -f f -t passwd_file_t /usr/lib/group
-chroot "$sysroot" semanage fcontext -a -f f -t shadow_t /usr/lib/shadow
-chroot "$sysroot" semanage fcontext -a -f f -t shadow_t /usr/lib/gshadow
-chroot "$sysroot" semanage fcontext -a -f f -t passwd_file_t /usr/db/passwd.db
-chroot "$sysroot" semanage fcontext -a -f f -t passwd_file_t /usr/db/group.db
-chroot "$sysroot" semanage fcontext -a -f f -t shadow_t /usr/db/shadow.db
-chroot "$sysroot" semanage fcontext -a -f f -t shadow_t /usr/db/gshadow.db
-chroot "$sysroot" restorecon -v -R /usr /etc || :
+#chroot "$sysroot" semanage fcontext -a -e /root /var/roothome
+chroot "$sysroot" semanage fcontext -a -e /root /usr/share/factory/var/roothome
+chroot "$sysroot" semanage fcontext -a -s system_u -f f -t passwd_file_t /usr/lib/passwd
+chroot "$sysroot" semanage fcontext -a -s system_u -f f -t passwd_file_t /usr/lib/group
+chroot "$sysroot" semanage fcontext -a -s system_u -f f -t shadow_t /usr/lib/shadow
+chroot "$sysroot" semanage fcontext -a -s system_u -f f -t shadow_t /usr/lib/gshadow
+chroot "$sysroot" semanage fcontext -a -s system_u -f f -t passwd_file_t /usr/db/passwd.db
+chroot "$sysroot" semanage fcontext -a -s system_u -f f -t passwd_file_t /usr/db/group.db
+chroot "$sysroot" semanage fcontext -a -s system_u -f f -t shadow_t /usr/db/shadow.db
+chroot "$sysroot" semanage fcontext -a -s system_u -f f -t shadow_t /usr/db/gshadow.db
+chroot "$sysroot" restorecon -m -v -F -R /usr /etc || :
 rm -fr "$sysroot"/var/lib/selinux
 
 #---------------
