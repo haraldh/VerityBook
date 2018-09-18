@@ -7,6 +7,8 @@ sed -i -e 's#/var/db#/usr/db#g' "$sysroot"/lib*/libnss_db-2*.so "$sysroot"/var/d
 
 egrep -e '^(adm|wheel):.*' "$sysroot"/etc/group > "$sysroot"/etc/group.adm
 egrep -e '^(adm|wheel):.*' "$sysroot"/etc/gshadow > "$sysroot"/etc/gshadow.adm
+chmod --reference="$sysroot"/etc/group "$sysroot"/etc/group.adm
+chmod --reference="$sysroot"/etc/gshadow "$sysroot"/etc/gshadow.adm
 
 sed -i -e 's#:/root:#:/var/root:#g' "$sysroot"/etc/passwd
 
@@ -16,7 +18,10 @@ chroot "$sysroot" bash -c 'make -C /var/db /usr/db/passwd.db /usr/db/shadow.db /
 
 mv "$sysroot"/etc/group.adm "$sysroot"/etc/group
 mv "$sysroot"/etc/gshadow.adm "$sysroot"/etc/gshadow
-chmod 0000 "$sysroot"/etc/gshadow "$sysroot"/etc/shadow
+chmod --reference="$sysroot"/lib/shadow "$sysroot"/etc/shadow
+chmod --reference="$sysroot"/lib/passwd "$sysroot"/etc/passwd
+
+chroot "$sysroot" restorecon /etc/group /etc/gshadow
 
 mkdir -p "$sysroot"/usr/share/factory/cfg
 mv "$sysroot"/etc/passwd \
