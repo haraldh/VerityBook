@@ -25,8 +25,6 @@ mv "$sysroot"/etc/gshadow.adm "$sysroot"/etc/gshadow
 chmod --reference="$sysroot"/lib/shadow "$sysroot"/etc/shadow
 chmod --reference="$sysroot"/lib/passwd "$sysroot"/etc/passwd
 
-chroot "$sysroot" restorecon /etc/group /etc/gshadow
-
 mkdir -p "$sysroot"/usr/share/factory/cfg
 mv "$sysroot"/etc/passwd \
     "$sysroot"/etc/sub{u,g}id \
