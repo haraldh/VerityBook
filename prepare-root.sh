@@ -281,10 +281,10 @@ chroot  "$sysroot" \
 	-m "udev-rules dracut-systemd base fs-lib shutdown terminfo resume verity selinux" \
 	--install "clonedisk wipefs sfdisk dd mkfs.xfs mkswap chroot mountpoint mkdir stat openssl" \
 	--install "clevis clevis-luks-bind jose clevis-encrypt-tpm2 clevis-decrypt clevis-luks-unlock clevis-decrypt-tpm2"  \
-	--install "cryptsetup tail sort pwmake mktemp swapon" \
+	--install "cryptsetup tail sort pwmake mktemp swapon getenforce" \
 	--install "tpm2_pcrextend tpm2_createprimary tpm2_pcrlist tpm2_createpolicy" \
 	--install "tpm2_create tpm2_load tpm2_unseal tpm2_takeownership" \
-	--include /pre-pivot.sh /lib/dracut/hooks/pre-pivot/pre-pivot.sh \
+	--include /pre-pivot.sh /lib/dracut/hooks/pre-pivot/80-pre-pivot.sh \
 	--install /usr/lib/systemd/system/clevis-luks-askpass.path \
 	--install /usr/lib/systemd/system/clevis-luks-askpass.service \
 	--install /usr/libexec/clevis-luks-askpass \
