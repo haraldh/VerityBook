@@ -139,7 +139,7 @@ readonly MY_TMPDIR="$(mktemp -p "$TMPDIR/" -d -t ${PROGNAME}.XXXXXX)"
 trap '
     ret=$?;
     mountpoint -q "$sysroot"/var/cache/dnf && umount "$sysroot"/var/cache/dnf
-    for i in "$sysroot"/{dev,sys,proc,run}; do
+    for i in "$sysroot"/{dev,sys/fs/selinux,sys,proc,run}; do
        [[ -d "$i" ]] && mountpoint -q "$i" && umount "$i"
     done
     [[ $MY_TMPDIR ]] && rm -rf --one-file-system -- "$MY_TMPDIR"
@@ -169,6 +169,7 @@ mkdir -p "$sysroot"/{dev,proc,sys,run}
 mount --bind /proc "$sysroot/proc"
 #mount --bind /run "$sysroot/run"
 mount --bind /sys "$sysroot/sys"
+mount --bind /sys/fs/selinux "$sysroot/sys/fs/selinux"
 mount -t devtmpfs devtmpfs "$sysroot/dev"
 
 mkdir -p "$sysroot"/var/cache/dnf
@@ -514,7 +515,7 @@ rm -fr "$sysroot"/home/*
 rm -f "$sysroot"/etc/yum.repos.d/*
 mkdir -p "$sysroot"/home
 
-for i in "$sysroot"/{dev,sys,proc,run}; do
+for i in "$sysroot"/{dev,sys/fs/selinux,sys,proc,run}; do
     [[ -d "$i" ]] && mountpoint -q "$i" && umount "$i"
 done
 
