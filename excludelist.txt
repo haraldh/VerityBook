@@ -5,3 +5,4 @@ grub*
 plymouth
 httpd
 gnome-boxes
+dbxtool
