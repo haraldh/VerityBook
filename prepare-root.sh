@@ -452,6 +452,10 @@ EOF
 # gnome-initial-setup
 > "$sysroot"/usr/share/gnome-initial-setup/vendor.conf
 
+# LVM
+rm -f "$sysroot"/etc/systemd/system/sysinit.target.wants/lvm*
+rm -f "$sysroot"/etc/systemd/system/*.wants/multipathd*
+
 
 # ------------------------------------------------------------------------------
 # selinux
