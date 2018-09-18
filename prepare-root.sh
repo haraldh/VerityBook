@@ -376,7 +376,7 @@ echo 'LANG=en_US.UTF-8' > "$sysroot"/usr/share/factory/cfg/locale.conf
 
 #---------------
 # localtime
-mv "$sysroot"/etc/localtime "$sysroot"/usr/share/factory/cfg/localtime
+ln -s /usr/share/zoneinfo/GMT "$sysroot"/usr/share/factory/cfg/localtime
 ln -fsnr "$sysroot"/cfg/localtime "$sysroot"/etc/localtime
 
 #---------------
