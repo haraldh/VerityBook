@@ -5,6 +5,7 @@
 
 sed -i -e 's#^\(passwd:.*\) files#\1 files altfiles db#g;s#^\(shadow:.*\) files#\1 files altfiles db#g;s#^\(group:.*\) files#\1 files altfiles db#g' \
     "$sysroot"/etc/nsswitch.conf
+
 mkdir -p "$sysroot"/usr/db
 sed -i -e 's#/var/db#/usr/db#g' "$sysroot"/lib*/libnss_db-2*.so "$sysroot"/var/db/Makefile
 
@@ -13,7 +14,7 @@ egrep -e '^(adm|wheel):.*' "$sysroot"/etc/gshadow > "$sysroot"/etc/gshadow.adm
 chmod --reference="$sysroot"/etc/group "$sysroot"/etc/group.adm
 chmod --reference="$sysroot"/etc/gshadow "$sysroot"/etc/gshadow.adm
 
-sed -i -e 's#:/root:#:/var/root:#g' "$sysroot"/etc/passwd
+sed -i -e 's#:/root:#:/var/roothome:#g' "$sysroot"/etc/passwd
 
 sed -i -e '/^wheel:.*/d;/^adm:.*/d' "$sysroot"/etc/group "$sysroot"/etc/gshadow
 
@@ -66,11 +67,11 @@ sed -i -e 's#/etc/.pwd.lock#/cfg/.pwd.lock#g' \
     && sed -i -e 's#/etc/.pwd.lock#/cfg/.pwd.lock#g' \
     "$sysroot"/usr/lib*/librpmostree-1.so.1
 
-mkdir -p "$sysroot"/usr/share/factory/var/root
-chown +0.+0 "$sysroot"/usr/share/factory/var/root
+mkdir -p "$sysroot"/usr/share/factory/var/roothome
+chown +0.+0 "$sysroot"/usr/share/factory/var/roothome
 
 cat > "$sysroot"/usr/lib/tmpfiles.d/home.conf <<EOF
-C /var/root - - - - -
+C /var/roothome - - - - -
 C /cfg/passwd - - - - -
 C /cfg/shadow - - - - -
 C /cfg/group - - - - -

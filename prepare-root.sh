@@ -513,7 +513,7 @@ if [[ -d "$sysroot"/boot/efi/EFI/fedora ]]; then
 fi
 
 rm -fr "$sysroot"/{boot,root}
-ln -sfnr "$sysroot"/var/root "$sysroot"/root
+ln -sfnr "$sysroot"/var/roothome "$sysroot"/root
 mkdir "$sysroot"/efi
 rm -fr "$sysroot"/var
 rm -fr "$sysroot"/home
