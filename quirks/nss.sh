@@ -1,6 +1,9 @@
 #!/usr/bin/bash -ex
 
-sed -i -e 's#^\(passwd:.*\) files#\1 files db altfile#g;s#^\(shadow:.*\) files#\1 files altfiles db#g;s#^\(group:.*\) files#\1 files altfiles db#g' \
+# rpcbind only accepts "files altfiles"
+# altfiles has no shadow/gshadow support, therefore we need db
+
+sed -i -e 's#^\(passwd:.*\) files#\1 files altfiles db#g;s#^\(shadow:.*\) files#\1 files altfiles db#g;s#^\(group:.*\) files#\1 files altfiles db#g' \
     "$sysroot"/etc/nsswitch.conf
 mkdir -p "$sysroot"/usr/db
 sed -i -e 's#/var/db#/usr/db#g' "$sysroot"/lib*/libnss_db-2*.so "$sysroot"/var/db/Makefile
