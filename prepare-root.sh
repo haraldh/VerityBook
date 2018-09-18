@@ -450,13 +450,18 @@ EOF
 # gnome-initial-setup
 > "$sysroot"/usr/share/gnome-initial-setup/vendor.conf
 
+#---------------
 # LVM
 rm -f "$sysroot"/etc/systemd/system/sysinit.target.wants/lvm*
 rm -f "$sysroot"/etc/systemd/system/*.wants/multipathd*
 
-
+#---------------
 # DNF
 rm -f "$sysroot"/etc/systemd/system/multi-user.target.wants/dnf-makecache.timer
+
+#---------------
+# network-online.target
+rm -fr "$sysroot"/etc/systemd/system/network-online.target.wants
 
 # ------------------------------------------------------------------------------
 # selinux
@@ -482,7 +487,6 @@ rm -fr "$sysroot"/var/lib/rpm
 rm -fr "$sysroot"/var/log/dnf*
 rm -fr "$sysroot"/var/cache/*/*
 rm -fr "$sysroot"/var/tmp/*
-rm -fr "$sysroot"/etc/systemd/system/network-online.target.wants
 mv "$sysroot"/lib/tmpfiles.d/var.conf "$sysroot"/lib/tmpfiles.d-var.conf
 chroot "$sysroot" bash -c 'for i in $(find -H /var -xdev -type d); do grep " $i " -r -q /lib/tmpfiles.d && ! grep " $i " -q /lib/tmpfiles.d-var.conf && rm -vfr --one-file-system "$i" ; done; :'
 cp -avxr "$sysroot"/var/* "$sysroot"/usr/share/factory/var/
