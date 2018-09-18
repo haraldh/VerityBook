@@ -128,6 +128,15 @@ umount -l /run/initramfs/mnt
 #    [[ -f /sysroot/cfg/$i ]] && continue
 #    cp -a /sysroot/usr/share/factory/cfg/$i /sysroot/cfg/$i
 #done
+
 if [[ $FIRST_TIME ]]; then
-    chroot /sysroot bash -c '/usr/bin/systemd-tmpfiles --create --remove --boot --exclude-prefix=/dev --exclude-prefix=/run --exclude-prefix=/tmp  --exclude-prefix=/etc 2>&1;  restorecon -R -v /cfg /var 2>&1'| vinfo
+    mount -o bind /sys /sysroot/sys
+    mount -t selinuxfs /sysroot/sys/fs/selinux
+    OLD_ENFORCE=$(getenforce)
+    setenforce 0
+    chroot /sysroot /usr/bin/systemd-tmpfiles --create --remove --boot --exclude-prefix=/dev --exclude-prefix=/run --exclude-prefix=/tmp --exclude-prefix=/etc 2>&1 | vinfo
+    chroot /sysroot /usr/sbin/restorecon -m -vvvvv -F -R /cfg /var 2>&1 | vinfo
+    setenforce $OLD_ENFORCE
+    umount /sysroot/sys/fs/selinux
+    umount /sysroot/sys
 fi
