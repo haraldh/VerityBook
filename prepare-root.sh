@@ -257,7 +257,6 @@ mkdir -p "$sysroot"/etc/pki/${NAME}
 cp "${CURDIR}/${GPGKEY}" "$sysroot"/etc/pki/${NAME}/GPG-KEY
 
 rpm --root "$sysroot" -qa | sort > "$sysroot"/usr/rpm-list.txt
-mkdir -p "$sysroot"/overlay/efi
 
 cp "${BASEDIR}"/pre-pivot.sh "$sysroot"/pre-pivot.sh
 cp -avr "${BASEDIR}"/10verity "$sysroot"/usr/lib/dracut/modules.d/
@@ -283,7 +282,6 @@ chroot  "$sysroot" \
 	--install "tpm2_pcrextend tpm2_createprimary tpm2_pcrlist tpm2_createpolicy" \
 	--install "tpm2_create tpm2_load tpm2_unseal tpm2_takeownership" \
 	--include /pre-pivot.sh /lib/dracut/hooks/pre-pivot/pre-pivot.sh \
-	--include /overlay / \
 	--install /usr/lib/systemd/system/clevis-luks-askpass.path \
 	--install /usr/lib/systemd/system/clevis-luks-askpass.service \
 	--install /usr/libexec/clevis-luks-askpass \
@@ -294,7 +292,6 @@ chroot  "$sysroot" \
 	--install /usr/lib/systemd/system/basic.target.wants/rngd.service
 
 rm "$sysroot"/pre-pivot.sh
-rm -fr "$sysroot"/overlay
 
 umount "$sysroot"/var/cache/dnf
 
