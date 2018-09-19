@@ -1,5 +1,4 @@
-#!/bin/bash
-set -ex
+#!/bin/bash -ex
 
 usage() {
     cat << EOF
@@ -170,14 +169,13 @@ chown -R +0.+0 "$sysroot"
 chmod 0000 "$sysroot"/etc/{shadow,gshadow}
 
 mkdir -p "$sysroot"/{dev,proc,sys,run}
-mount --bind /proc "$sysroot/proc"
-#mount --bind /run "$sysroot/run"
-mount --bind /sys "$sysroot/sys"
-mount --bind /sys/fs/selinux "$sysroot/sys/fs/selinux"
+mount -o bind /proc "$sysroot/proc"
+#mount -o bind /run "$sysroot/run"
+mount -o bind /sys "$sysroot/sys"
 mount -t devtmpfs devtmpfs "$sysroot/dev"
 
 mkdir -p "$sysroot"/var/cache/dnf
-mount --bind /var/cache/dnf "$sysroot"/var/cache/dnf
+mount -o bind /var/cache/dnf "$sysroot"/var/cache/dnf
 
 dnf -v --nogpgcheck \
     --installroot "$sysroot"/ \
@@ -278,10 +276,10 @@ chroot  "$sysroot" \
 	--filesystems "squashfs vfat xfs" \
 	--add-drivers "=drivers/char/tpm" \
 	-m "bash systemd systemd-initrd modsign crypt dm kernel-modules qemu rootfs-block" \
-	-m "udev-rules dracut-systemd base fs-lib shutdown terminfo resume verity selinux" \
+	-m "udev-rules dracut-systemd base fs-lib shutdown terminfo resume verity" \
 	--install "clonedisk wipefs sfdisk dd mkfs.xfs mkswap chroot mountpoint mkdir stat openssl" \
 	--install "clevis clevis-luks-bind jose clevis-encrypt-tpm2 clevis-decrypt clevis-luks-unlock clevis-decrypt-tpm2"  \
-	--install "cryptsetup tail sort pwmake mktemp swapon getenforce" \
+	--install "cryptsetup tail sort pwmake mktemp swapon" \
 	--install "tpm2_pcrextend tpm2_createprimary tpm2_pcrlist tpm2_createpolicy" \
 	--install "tpm2_create tpm2_load tpm2_unseal tpm2_takeownership" \
 	--include /pre-pivot.sh /lib/dracut/hooks/pre-pivot/80-pre-pivot.sh \
@@ -469,7 +467,9 @@ rm -fr "$sysroot"/etc/systemd/system/network-online.target.wants
 
 # ------------------------------------------------------------------------------
 # selinux
-sed -i -e 's#^SELINUX=.*#SELINUX=permissive#g' "$sysroot"/etc/selinux/config
+#sed -i -e 's#^SELINUX=.*#SELINUX=permissive#g' "$sysroot"/etc/selinux/config
+mount -o bind /sys/fs/selinux "$sysroot/sys/fs/selinux"
+
 chroot "$sysroot" semanage fcontext -a -e /etc /cfg
 chroot "$sysroot" semanage fcontext -a -e /etc /usr/share/factory/cfg
 chroot "$sysroot" semanage fcontext -a -e /var /usr/share/factory/var
@@ -481,6 +481,8 @@ chroot "$sysroot" semanage fcontext -a -s system_u -f f -t passwd_file_t /usr/db
 chroot "$sysroot" semanage fcontext -a -s system_u -f f -t passwd_file_t /usr/db/group.db
 chroot "$sysroot" semanage fcontext -a -s system_u -f f -t shadow_t /usr/db/shadow.db
 chroot "$sysroot" semanage fcontext -a -s system_u -f f -t shadow_t /usr/db/gshadow.db
+cp "$CURDIR"/FedoraBook.te "$sysroot"/var/tmp
+chroot "$sysroot" bash -c "cd /var/tmp; make -f  /usr/share/selinux/devel/Makefile; semodule -i FedoraBook.pp"
 chroot "$sysroot" restorecon -m -v -F -R /usr /etc || :
 rm -fr "$sysroot"/var/lib/selinux
 
@@ -518,7 +520,7 @@ rm -fr "$sysroot"/var
 rm -fr "$sysroot"/home
 rm -f "$sysroot"/etc/yum.repos.d/*
 mkdir -p "$sysroot"/{var,home,cfg}
-chroot "$sysroot" restorecon -v /var /home /cfg /efi|| :
+chroot "$sysroot" restorecon -F -v /var /home /cfg /efi|| :
 
 for i in "$sysroot"/{dev,sys/fs/selinux,sys,proc,run}; do
     [[ -d "$i" ]] && mountpoint -q "$i" && umount "$i"
@@ -588,3 +590,4 @@ EOF
 
 chown "$USER" "${OUTDIR%/*}/${NAME}-latest.json"
 setenforce $OLD_SELINUX
+

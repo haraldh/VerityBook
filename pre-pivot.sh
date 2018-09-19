@@ -118,25 +118,16 @@ for i in var home cfg; do
     fi
 done
 
-
 mount -o bind /run/initramfs/mnt/var /sysroot/var
 mount -o bind /run/initramfs/mnt/home /sysroot/home
 mount -o bind /run/initramfs/mnt/cfg /sysroot/cfg
 umount -l /run/initramfs/mnt
 
-#for i in passwd shadow group gshadow subuid subgid; do
-#    [[ -f /sysroot/cfg/$i ]] && continue
-#    cp -a /sysroot/usr/share/factory/cfg/$i /sysroot/cfg/$i
-#done
-
 if [[ $FIRST_TIME ]]; then
     mount -o bind /sys /sysroot/sys
-    mount -t selinuxfs /sysroot/sys/fs/selinux
-    OLD_ENFORCE=$(getenforce)
-    setenforce 0
-    chroot /sysroot /usr/bin/systemd-tmpfiles --create --remove --boot --exclude-prefix=/dev --exclude-prefix=/run --exclude-prefix=/tmp --exclude-prefix=/etc 2>&1 | vinfo
-    chroot /sysroot /usr/sbin/restorecon -m -vvvvv -F -R /cfg /var 2>&1 | vinfo
-    setenforce $OLD_ENFORCE
+    mount -t selinuxfs none /sysroot/sys/fs/selinux
+    chroot /sysroot bash -c 'LANG=C; /usr/sbin/load_policy -i; setenforce 0; /usr/bin/systemd-tmpfiles --create --remove --boot --exclude-prefix=/dev --exclude-prefix=/run --exclude-prefix=/tmp --exclude-prefix=/etc ; /usr/sbin/restorecon -m -vvvvv -F -R /cfg /var'
     umount /sysroot/sys/fs/selinux
     umount /sysroot/sys
 fi
+

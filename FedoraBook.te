@@ -1,0 +1,34 @@
+
+module FedoraBook 1.0;
+
+require {
+	type accountsd_t;
+	type shadow_t;
+	type system_dbusd_t;
+	type init_var_run_t;
+	type useradd_t;
+	type geoclue_t;
+	type geoclue_tmp_t;
+	type unlabeled_t;
+	type systemd_tmpfiles_t;
+	class lnk_file read;
+	class file { execute getattr map };
+	class dir { add_name write };
+}
+
+#============= accountsd_t ==============
+
+#!!!! This avc can be allowed using the boolean 'domain_can_mmap_files'
+allow accountsd_t shadow_t:file map;
+
+#============= geoclue_t ==============
+allow geoclue_t geoclue_tmp_t:file execute;
+
+#============= system_dbusd_t ==============
+allow system_dbusd_t init_var_run_t:lnk_file read;
+
+#============= systemd_tmpfiles_t ==============
+allow systemd_tmpfiles_t shadow_t:file getattr;
+
+#============= useradd_t ==============
+allow useradd_t unlabeled_t:dir { add_name write };
