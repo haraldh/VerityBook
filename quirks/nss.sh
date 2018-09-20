@@ -1,6 +1,6 @@
 #!/usr/bin/bash -ex
 
-chroot "$sysroot" bash -c 'echo -n admin | passwd --stdin root'
+#chroot "$sysroot" bash -c 'echo -n admin | passwd --stdin root'
 
 # rpcbind only accepts "files altfiles"
 # altfiles has no shadow/gshadow support, therefore we need db
