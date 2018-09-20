@@ -115,19 +115,40 @@ for i in var home cfg; do
     if ! [[ -d /run/initramfs/mnt/$i ]]; then
         mkdir /run/initramfs/mnt/$i
         FIRST_TIME=1
+    elif [[ -f /run/initramfs/mnt/$i/.autorelabel ]]; then
+        RELABEL=1
     fi
 done
 
 mount -o bind /run/initramfs/mnt/var /sysroot/var
 mount -o bind /run/initramfs/mnt/home /sysroot/home
 mount -o bind /run/initramfs/mnt/cfg /sysroot/cfg
-umount -l /run/initramfs/mnt
+umount -l /run/initramfs/mnt &>/dev/null
 
 if [[ $FIRST_TIME ]]; then
     mount -o bind /sys /sysroot/sys
     mount -t selinuxfs none /sysroot/sys/fs/selinux
-    chroot /sysroot bash -c 'LANG=C; /usr/sbin/load_policy -i; setenforce 0; /usr/bin/systemd-tmpfiles --create --remove --boot --exclude-prefix=/dev --exclude-prefix=/run --exclude-prefix=/tmp --exclude-prefix=/etc ; /usr/sbin/restorecon -m -vvvvv -F -R /cfg /var'
+    chroot /sysroot bash -c '
+/usr/sbin/load_policy -i
+/sbin/restorecon -m -F -v /cfg /var /home
+'
     umount /sysroot/sys/fs/selinux
     umount /sysroot/sys
 fi
 
+if [[ $RELABEL ]]; then
+    mount -o bind /sys /sysroot/sys
+    mount -t selinuxfs none /sysroot/sys/fs/selinux
+    chroot /sysroot bash -c '
+/usr/sbin/load_policy -i
+for i in var home cfg; do
+    [[ -e /$i/.autorelabel ]] || continue
+    rm -f /$i/.autorelabel
+    /sbin/restorecon -m -F -v -R /$i
+done
+' 2>&1 | vwarn
+    umount /sysroot/sys/fs/selinux
+    umount /sysroot/sys
+fi
+
+:

@@ -150,7 +150,7 @@ trap '
 # clean up after ourselves no matter how we die.
 trap 'exit 1;' SIGINT
 
-setenforce 0
+#setenforce 0
 
 if ! [[ -f "${BASEDIR}"/linuxx64.efi.stub ]]; then
     cp /lib/systemd/boot/efi/linuxx64.efi.stub "${BASEDIR}"/linuxx64.efi.stub
@@ -170,8 +170,9 @@ chmod 0000 "$sysroot"/etc/{shadow,gshadow}
 
 mkdir -p "$sysroot"/{dev,proc,sys,run}
 mount -o bind /proc "$sysroot/proc"
-#mount -o bind /run "$sysroot/run"
+mount -o bind /run "$sysroot/run"
 mount -o bind /sys "$sysroot/sys"
+mount -o bind /sys/fs/selinux "$sysroot/sys/fs/selinux"
 mount -t devtmpfs devtmpfs "$sysroot/dev"
 
 mkdir -p "$sysroot"/var/cache/dnf
@@ -227,6 +228,7 @@ dnf -v --nogpgcheck \
     selinux-policy-devel \
     libselinux-utils \
     audit \
+    dosfstools \
     $PKGLIST
 
 for i in passwd shadow group gshadow subuid subgid; do
@@ -281,7 +283,7 @@ chroot  "$sysroot" \
 	--install "clevis clevis-luks-bind jose clevis-encrypt-tpm2 clevis-decrypt clevis-luks-unlock clevis-decrypt-tpm2"  \
 	--install "cryptsetup tail sort pwmake mktemp swapon" \
 	--install "tpm2_pcrextend tpm2_createprimary tpm2_pcrlist tpm2_createpolicy" \
-	--install "tpm2_create tpm2_load tpm2_unseal tpm2_takeownership" \
+	--install "tpm2_create tpm2_load tpm2_unseal tpm2_takeownership chcon sleep" \
 	--include /pre-pivot.sh /lib/dracut/hooks/pre-pivot/80-pre-pivot.sh \
 	--install /usr/lib/systemd/system/clevis-luks-askpass.path \
 	--install /usr/lib/systemd/system/clevis-luks-askpass.service \
@@ -318,10 +320,6 @@ done
 #---------------
 # timesync
 ln -fsnr "$sysroot"/usr/lib/systemd/system/systemd-timesyncd.service "$sysroot"/usr/lib/systemd/system/sysinit.target.wants/systemd-timesyncd.service
-
-#---------------
-# dbus-broker
-ln -fsnr "$sysroot"/usr/lib/systemd/system/dbus-broker.service "$sysroot"/etc/systemd/system/dbus.service
 
 #---------------
 # ssh
@@ -395,6 +393,9 @@ sed -i -e 's#/etc/adjtime#/cfg/adjtime#g;s#/etc/localtime#/cfg/localtime#g;s#/et
     "$sysroot"/usr/lib/systemd/systemd-timedated \
     "$sysroot"/usr/lib/systemd/libsystemd-shared*.so \
     "$sysroot"/usr/lib/systemd/systemd \
+    "$sysroot"/usr/bin/systemd-machine-id-setup \
+    "$sysroot"/usr/bin/systemd-firstboot \
+    "$sysroot"/usr/lib/systemd/system/systemd-machine-id-commit.service \
     "$sysroot"/lib*/libc.so.*
 
 sed -i -e 's#ReadWritePaths=/etc#ReadWritePaths=/cfg#g' \
@@ -402,11 +403,22 @@ sed -i -e 's#ReadWritePaths=/etc#ReadWritePaths=/cfg#g' \
     "$sysroot"/lib/systemd/system/systemd-timedated.service \
     "$sysroot"/lib/systemd/system/systemd-hostnamed.service
 
+#cat > "$sysroot"/lib/systemd/system-generators/machine-id <<EOF
+##!/bin/bash -x
+#/sbin/restorecon -m -F -v /cfg /var /home /cfg/machine-id /var/run /var/lock
+#exit 0
+#EOF
+#chmod a+x "$sysroot"/lib/systemd/system-generators/machine-id
+
 cat >> "$sysroot"/usr/lib/tmpfiles.d/00-basics.conf <<EOF
 C /cfg/vconsole.conf - - - - -
 C /cfg/locale.conf - - - - -
 C /cfg/localtime - - - - -
 C /cfg/adjtime - - - - -
+z /home - - - - -
+z /cfg - - - - -
+z /cfg/machine-id 0444 - - - -
+z /var - - - - -
 EOF
 
 #---------------
@@ -450,7 +462,9 @@ EOF
 
 #---------------
 # gnome-initial-setup
-> "$sysroot"/usr/share/gnome-initial-setup/vendor.conf
+if [[ -f "$sysroot"/usr/share/gnome-initial-setup/vendor.conf ]]; then
+    > "$sysroot"/usr/share/gnome-initial-setup/vendor.conf
+fi
 
 #---------------
 # LVM
@@ -465,37 +479,32 @@ rm -f "$sysroot"/etc/systemd/system/multi-user.target.wants/dnf-makecache.timer
 # network-online.target
 rm -fr "$sysroot"/etc/systemd/system/network-online.target.wants
 
+#---------------
+# rsyslog link
+rm -fr "$sysroot"/etc/systemd/system/syslog.service
+
 # ------------------------------------------------------------------------------
 # selinux
 #sed -i -e 's#^SELINUX=.*#SELINUX=permissive#g' "$sysroot"/etc/selinux/config
-mount -o bind /sys/fs/selinux "$sysroot/sys/fs/selinux"
-
 chroot "$sysroot" semanage fcontext -a -e /etc /cfg
-chroot "$sysroot" semanage fcontext -a -e /etc /usr/share/factory/cfg
-chroot "$sysroot" semanage fcontext -a -e /var /usr/share/factory/var
-chroot "$sysroot" semanage fcontext -a -s system_u -f f -t passwd_file_t /usr/lib/passwd
-chroot "$sysroot" semanage fcontext -a -s system_u -f f -t passwd_file_t /usr/lib/group
-chroot "$sysroot" semanage fcontext -a -s system_u -f f -t shadow_t /usr/lib/shadow
-chroot "$sysroot" semanage fcontext -a -s system_u -f f -t shadow_t /usr/lib/gshadow
-chroot "$sysroot" semanage fcontext -a -s system_u -f f -t passwd_file_t /usr/db/passwd.db
-chroot "$sysroot" semanage fcontext -a -s system_u -f f -t passwd_file_t /usr/db/group.db
-chroot "$sysroot" semanage fcontext -a -s system_u -f f -t shadow_t /usr/db/shadow.db
-chroot "$sysroot" semanage fcontext -a -s system_u -f f -t shadow_t /usr/db/gshadow.db
-cp "$CURDIR"/FedoraBook.te "$sysroot"/var/tmp
+cp "$CURDIR"/FedoraBook.te "$CURDIR"/FedoraBook.fc "$sysroot"/var/tmp
 chroot "$sysroot" bash -c "cd /var/tmp; make -f  /usr/share/selinux/devel/Makefile; semodule -i FedoraBook.pp"
-chroot "$sysroot" restorecon -m -v -F -R /usr /etc || :
 rm -fr "$sysroot"/var/lib/selinux
 
 #---------------
 # var
+rm -fr "$sysroot"//usr/lib/fontconfig/cache
 rm -fr "$sysroot"/var/lib/rpm
+rm -fr "$sysroot"/var/lib/sepolgen
+rm -fr "$sysroot"/var/lib/dnf
+rm -fr "$sysroot"/var/lib/flatpak/repo/tmp
 rm -fr "$sysroot"/var/log/dnf*
 rm -fr "$sysroot"/var/cache/*/*
 rm -fr "$sysroot"/var/tmp/*
 mv "$sysroot"/lib/tmpfiles.d/var.conf "$sysroot"/lib/tmpfiles.d-var.conf
 chroot "$sysroot" bash -c 'for i in $(find -H /var -xdev -type d); do grep " $i " -r -q /lib/tmpfiles.d && ! grep " $i " -q /lib/tmpfiles.d-var.conf && rm -vfr --one-file-system "$i" ; done; :'
 cp -avxr "$sysroot"/var/* "$sysroot"/usr/share/factory/var/
-rm -fr "$sysroot"/usr/share/factory/var/{run,lock}
+rm -f "$sysroot"/usr/share/factory/var/{run,lock}
 
 chroot "$sysroot" bash -c 'for i in $(find -H /var -xdev -maxdepth 2 -mindepth 1 -type d); do echo "C $i - - - - -"; done >> /usr/lib/tmpfiles.d/var-quirk.conf; :'
 echo 'C /var/mail - - - - -' >>  "$sysroot"/usr/lib/tmpfiles.d/var-quirk.conf
@@ -515,12 +524,15 @@ fi
 
 rm -fr "$sysroot"/{boot,root}
 ln -sfnr "$sysroot"/var/roothome "$sysroot"/root
-mkdir "$sysroot"/efi
 rm -fr "$sysroot"/var
 rm -fr "$sysroot"/home
 rm -f "$sysroot"/etc/yum.repos.d/*
-mkdir -p "$sysroot"/{var,home,cfg}
-chroot "$sysroot" restorecon -F -v /var /home /cfg /efi|| :
+mkdir -p "$sysroot"/{var,home,cfg,net,efi}
+ln -sfnr "$sysroot"/run "$sysroot"/var/run
+ln -sfnr "$sysroot"/run/lock "$sysroot"/var/lock
+
+chroot "$sysroot" restorecon -m -v -F -R /usr /etc /var
+chroot "$sysroot" restorecon -m -v -F /cfg /efi /home /net /root
 
 for i in "$sysroot"/{dev,sys/fs/selinux,sys,proc,run}; do
     [[ -d "$i" ]] && mountpoint -q "$i" && umount "$i"

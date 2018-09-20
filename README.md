@@ -55,7 +55,6 @@ All configurable files have been whitelisted and moved to /cfg.
 - support more clevis pins and mixed pins
 - firmware update
 - option to always clean data disk on boot
-- selinux?
 
 ## Complete / What works already?
 - boot from single efi binary
@@ -65,6 +64,7 @@ All configurable files have been whitelisted and moved to /cfg.
 - swap on LUKS2 with tpm2 (no password for resume from disk??)
 - /home /cfg and /var on single data partition
 - Secure Boot
+- selinux
 
 ## Known Failures
 - no kernel command line on DELL ( you need a newer systemd https://github.com/systemd/systemd/pull/10001 )
