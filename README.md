@@ -73,6 +73,7 @@ All configurable files have been whitelisted and moved to /cfg.
 - systemd: failed to umount /var
 - needs a ´´´restorecond -FmvR /cfg /var /home´´´ after first boot, because systemd-tmpfiles does not seem
   to restore all context
+- vga switcheroo is not accessible for lockdown=1, because the kernel does not allow access to /sys/kernel/debug
 
 ## Create
 
