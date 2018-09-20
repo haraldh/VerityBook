@@ -71,6 +71,8 @@ All configurable files have been whitelisted and moved to /cfg.
   cp linuxx64.efi.stub to this git repo dir from a compiled upstream systemd
 - gnome-software: can't update firmware repo
 - systemd: failed to umount /var
+- needs a ´´´restorecond -FmvR /cfg /var /home´´´ after first boot, because systemd-tmpfiles does not seem
+  to restore all context
 
 ## Create
 
