@@ -120,7 +120,6 @@ VERSION_ID="${RELEASEVER}.$(date -u +'%Y%m%d%H%M%S')"
 OUTDIR=${OUTDIR:-"${CURDIR}/${NAME}-${VERSION_ID}"}
 GPGKEY=${GPGKEY:-${NAME}.gpg}
 REPOSD=${REPOSD:-/etc/yum.repos.d}
-readonly OLD_SELINUX=$(getenforce)
 
 [[ $TMPDIR ]] || TMPDIR=/var/tmp
 readonly TMPDIR="$(realpath -e "$TMPDIR")"
@@ -143,14 +142,11 @@ trap '
        [[ -d "$i" ]] && mountpoint -q "$i" && umount "$i"
     done
     [[ $MY_TMPDIR ]] && rm -rf --one-file-system -- "$MY_TMPDIR"
-    setenforce $OLD_SELINUX
     exit $ret;
     ' EXIT
 
 # clean up after ourselves no matter how we die.
 trap 'exit 1;' SIGINT
-
-#setenforce 0
 
 if ! [[ -f "${BASEDIR}"/linuxx64.efi.stub ]]; then
     cp /lib/systemd/boot/efi/linuxx64.efi.stub "${BASEDIR}"/linuxx64.efi.stub
@@ -601,5 +597,4 @@ cat > "${OUTDIR%/*}/${NAME}-latest.json" <<EOF
 EOF
 
 chown "$USER" "${OUTDIR%/*}/${NAME}-latest.json"
-setenforce $OLD_SELINUX
 
