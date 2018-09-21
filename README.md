@@ -55,6 +55,11 @@ All configurable files have been whitelisted and moved to /cfg.
 - support more clevis pins and mixed pins
 - firmware update
 - option to always clean data disk on boot
+- instead of gpg use:
+```bash
+$ openssl dgst -sha256 -sign ../DB.key -out sha512sum.txt.sig sha512sum.txt
+$ openssl dgst -sha256 -verify  <(openssl x509 -in ../DB.crt -pubkey -noout) -signature sha512sum.txt.sig sha512sum.txt
+```
 
 ## Complete / What works already?
 - boot from single efi binary
