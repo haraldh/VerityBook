@@ -33,7 +33,6 @@ dbus-devel
 dnf
 docbook-dtds
 docbook-style-xsl
-docbook-style-xsl
 elfutils-devel
 f29-backgrounds-gnome
 fedora-gpg-keys
@@ -126,6 +125,7 @@ rpcbind
 rsync
 sbsigntools
 squashfs-tools
+thunderbird
 tree
 vim-enhanced
 virt-manager
