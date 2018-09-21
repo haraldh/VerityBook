@@ -172,7 +172,6 @@ mkdir -p "$sysroot"/{dev,proc,sys,run}
 mount -o bind /proc "$sysroot/proc"
 mount -o bind /run "$sysroot/run"
 mount -o bind /sys "$sysroot/sys"
-mount -o bind /sys/fs/selinux "$sysroot/sys/fs/selinux"
 mount -t devtmpfs devtmpfs "$sysroot/dev"
 
 mkdir -p "$sysroot"/var/cache/dnf
@@ -250,7 +249,18 @@ for i in passwd shadow group gshadow subuid subgid; do
     chmod u+r "${BASEDIR}/${NAME}/$i"
 done
 
-# chroot "$sysroot" bash -i
+# ------------------------------------------------------------------------------
+# selinux
+#sed -i -e 's#^SELINUX=.*#SELINUX=permissive#g' "$sysroot"/etc/selinux/config
+mount -t selinuxfs none "$sysroot/sys/fs/selinux"
+chroot "$sysroot" semanage fcontext --noreload -a -e /etc /cfg
+cp "$CURDIR"/FedoraBook.te "$CURDIR"/FedoraBook.fc "$sysroot"/var/tmp
+chroot "$sysroot" bash -c '
+    cd /var/tmp
+    make -f  /usr/share/selinux/devel/Makefile
+    semodule --noreload -i FedoraBook.pp
+'
+umount "$sysroot/sys/fs/selinux"
 
 cp "$CURDIR/clonedisk.sh" "$sysroot"/usr/bin/clonedisk
 cp "$CURDIR/update.sh" "$sysroot"/usr/bin/update
@@ -311,11 +321,106 @@ if [[ -f "$sysroot"/usr/lib/udev/rules.d/60-tpm-udev.rules ]]; then
     echo 'tss:!::' >> "$sysroot"/etc/gshadow
 fi
 
-. "${BASEDIR}"/quirks/nss.sh
-
+#---------------
+# quirks
 for q in "${QUIRKS[@]}"; do
     . "${BASEDIR}"/quirks/"$q".sh
 done
+
+#---------------
+# nss / passwd /shadow etc..
+
+#chroot "$sysroot" bash -c 'echo -n admin | passwd --stdin root'
+
+# rpcbind only accepts "files altfiles"
+# altfiles has no shadow/gshadow support, therefore we need db
+
+sed -i -e 's#^\(passwd:.*\) files#\1 files altfiles db#g;s#^\(shadow:.*\) files#\1 files altfiles db#g;s#^\(group:.*\) files#\1 files altfiles db#g' \
+    "$sysroot"/etc/nsswitch.conf
+
+mkdir -p "$sysroot"/usr/db
+sed -i -e 's#/var/db#/usr/db#g' "$sysroot"/lib*/libnss_db-2*.so "$sysroot"/var/db/Makefile
+
+egrep -e '^(adm|wheel):.*' "$sysroot"/etc/group > "$sysroot"/etc/group.adm
+egrep -e '^(adm|wheel):.*' "$sysroot"/etc/gshadow > "$sysroot"/etc/gshadow.adm
+chmod --reference="$sysroot"/etc/group "$sysroot"/etc/group.adm
+chmod --reference="$sysroot"/etc/gshadow "$sysroot"/etc/gshadow.adm
+
+sed -i -e 's#:/root:#:/var/roothome:#g' "$sysroot"/etc/passwd
+
+sed -i -e '/^wheel:.*/d;/^adm:.*/d' "$sysroot"/etc/group "$sysroot"/etc/gshadow
+
+chroot "$sysroot" bash -c '
+    make -C \
+        /var/db \
+        /usr/db/passwd.db \
+        /usr/db/shadow.db \
+        /usr/db/gshadow.db \
+        /usr/db/group.db \
+    && mv /etc/{passwd,shadow,group,gshadow} /lib \
+    && >/etc/passwd \
+    && > /etc/shadow \
+    && >/etc/group \
+    && >/etc/gshadow
+'
+
+mv "$sysroot"/etc/group.adm "$sysroot"/etc/group
+mv "$sysroot"/etc/gshadow.adm "$sysroot"/etc/gshadow
+chmod --reference="$sysroot"/lib/shadow "$sysroot"/etc/shadow
+chmod --reference="$sysroot"/lib/passwd "$sysroot"/etc/passwd
+
+mkdir -p "$sysroot"/usr/share/factory/cfg
+mv "$sysroot"/etc/passwd \
+    "$sysroot"/etc/sub{u,g}id \
+    "$sysroot"/etc/shadow \
+    "$sysroot"/etc/group \
+    "$sysroot"/etc/gshadow \
+    "$sysroot"/usr/share/factory/cfg/
+
+rm -f "$sysroot"/etc/shadow- "$sysroot"/etc/gshadow-
+
+sed -i -e 's!^# directory = /etc!directory = /var!g' "$sysroot"/etc/libuser.conf
+
+for i in passwd shadow group gshadow .pwd.lock subuid subgid; do
+    ln -sfnr "$sysroot"/cfg/"$i" "$sysroot"/etc/"$i"
+done
+
+sed -i -e 's#/etc/passwd#/cfg/passwd#g;s#/etc/npasswd#/cfg/npasswd#g' \
+    "$sysroot"/usr/lib*/security/pam_unix.so
+
+sed -i -e 's#/etc/shadow#/cfg/shadow#g;s#/etc/nshadow#/cfg/nshadow#g' \
+    "$sysroot"/usr/lib*/security/pam_unix.so
+
+sed -i -e 's#/etc/.pwdXXXXXX#/cfg/.pwdXXXXXX#g' \
+    "$sysroot"/usr/lib*/security/pam_unix.so
+
+sed -i -e 's#/etc/passwd#/cfg/passwd#g;s#/etc/shadow#/cfg/shadow#g;s#/etc/gshadow#/cfg/gshadow#g;s#/etc/group#/cfg/group#g;s#/etc/subuid#/cfg/subuid#g;s#/etc/subgid#/cfg/subgid#g' \
+    "$sysroot"/usr/sbin/user{add,mod,del} \
+    "$sysroot"/usr/sbin/group{add,mod,del} \
+    "$sysroot"/usr/bin/newgidmap \
+    "$sysroot"/usr/bin/newuidmap \
+    "$sysroot"/usr/sbin/newusers
+
+sed -i -e 's#/etc/.pwd.lock#/cfg/.pwd.lock#g' \
+    "$sysroot"/lib*/libc.so.* \
+    "$sysroot"/usr/lib/systemd/libsystemd-shared*.so
+
+[[ -e "$sysroot"/usr/lib*/librpmostree-1.so.1 ]] \
+    && sed -i -e 's#/etc/.pwd.lock#/cfg/.pwd.lock#g' \
+    "$sysroot"/usr/lib*/librpmostree-1.so.1
+
+mkdir -p "$sysroot"/usr/share/factory/var/roothome
+chown +0.+0 "$sysroot"/usr/share/factory/var/roothome
+
+cat > "$sysroot"/usr/lib/tmpfiles.d/home.conf <<EOF
+C /var/roothome - - - - -
+C /cfg/passwd - - - - -
+C /cfg/shadow - - - - -
+C /cfg/group - - - - -
+C /cfg/gshadow - - - - -
+C /cfg/subuid - - - - -
+C /cfg/subgid - - - - -
+EOF
 
 #---------------
 # timesync
@@ -424,11 +529,10 @@ EOF
 #---------------
 # X11
 if [[ -d "$sysroot"/etc/X11/xorg.conf.d ]]; then
-    mkdir -p "$sysroot"/usr/share/factory/cfg
-    mv "$sysroot"/etc/X11 "$sysroot"/usr/share/factory/cfg/X11
-    ln -fsnr "$sysroot"/cfg/X11 "$sysroot"/etc/X11
+    mkdir -p "$sysroot"/usr/share/factory/cfg/X11/xorg.conf.d
+    ln -fsnr "$sysroot"/cfg/X11/xorg.conf.d/00-keyboard.conf "$sysroot"/etc/X11/xorg.conf.d/00-keyboard.conf
     cat >> "$sysroot"/usr/lib/tmpfiles.d/X11.conf <<EOF
-C /cfg/X11 - - - - -
+C /cfg/X11/xorg.conf.d - - - - -
 EOF
 fi
 
@@ -450,7 +554,7 @@ ln -fsnr "$sysroot"/usr/lib/systemd/system/systemd-udev-settle-dri.service \
 if [[ -d "$sysroot"/usr/share/flatpak ]]; then
     mkdir -p "$sysroot"/usr/share/factory/var/lib/
     curl https://flathub.org/repo/flathub.flatpakrepo -o "$sysroot"/usr/share/flatpak/flathub.flatpakrepo
-    chroot "$sysroot" bash -c '/usr/bin/flatpak remote-add --if-not-exists flathub /usr/share/flatpak/flathub.flatpakrepo'
+    chroot "$sysroot" /usr/bin/flatpak remote-add --if-not-exists flathub /usr/share/flatpak/flathub.flatpakrepo
 fi
 
 #---------------
@@ -483,16 +587,15 @@ rm -fr "$sysroot"/etc/systemd/system/network-online.target.wants
 # rsyslog link
 rm -fr "$sysroot"/etc/systemd/system/syslog.service
 
-# ------------------------------------------------------------------------------
-# selinux
-#sed -i -e 's#^SELINUX=.*#SELINUX=permissive#g' "$sysroot"/etc/selinux/config
-chroot "$sysroot" semanage fcontext -a -e /etc /cfg
-cp "$CURDIR"/FedoraBook.te "$CURDIR"/FedoraBook.fc "$sysroot"/var/tmp
-chroot "$sysroot" bash -c "cd /var/tmp; make -f  /usr/share/selinux/devel/Makefile; semodule -i FedoraBook.pp"
-rm -fr "$sysroot"/var/lib/selinux
+#---------------
+# nested kvm
+if [[ -f "$sysroot"/etc/modprobe.d/kvm.conf ]]; then
+    sed -i -e 's/#options/options/g' "$sysroot"/etc/modprobe.d/kvm.conf
+fi
 
 #---------------
 # var
+rm -fr "$sysroot"/var/lib/selinux
 rm -fr "$sysroot"//usr/lib/fontconfig/cache
 rm -fr "$sysroot"/var/lib/rpm
 rm -fr "$sysroot"/var/lib/sepolgen
@@ -502,11 +605,23 @@ rm -fr "$sysroot"/var/log/dnf*
 rm -fr "$sysroot"/var/cache/*/*
 rm -fr "$sysroot"/var/tmp/*
 mv "$sysroot"/lib/tmpfiles.d/var.conf "$sysroot"/lib/tmpfiles.d-var.conf
-chroot "$sysroot" bash -c 'for i in $(find -H /var -xdev -type d); do grep " $i " -r -q /lib/tmpfiles.d && ! grep " $i " -q /lib/tmpfiles.d-var.conf && rm -vfr --one-file-system "$i" ; done; :'
+chroot "$sysroot" bash -c '
+    for i in $(find -H /var -xdev -type d); do
+        grep " $i " -r -q /lib/tmpfiles.d && \
+        ! grep " $i " -q /lib/tmpfiles.d-var.conf \
+        && rm -vfr --one-file-system "$i"
+    done
+    :
+'
 cp -avxr "$sysroot"/var/* "$sysroot"/usr/share/factory/var/
 rm -f "$sysroot"/usr/share/factory/var/{run,lock}
 
-chroot "$sysroot" bash -c 'for i in $(find -H /var -xdev -maxdepth 2 -mindepth 1 -type d); do echo "C $i - - - - -"; done >> /usr/lib/tmpfiles.d/var-quirk.conf; :'
+chroot "$sysroot" bash -c '
+    for i in $(find -H /var -xdev -maxdepth 2 -mindepth 1 -type d); do
+        echo "C $i - - - - -"
+    done >> /usr/lib/tmpfiles.d/var-quirk.conf
+    :
+'
 echo 'C /var/mail - - - - -' >>  "$sysroot"/usr/lib/tmpfiles.d/var-quirk.conf
 
 mv "$sysroot"/lib/tmpfiles.d-var.conf "$sysroot"/lib/tmpfiles.d/var.conf
@@ -528,12 +643,16 @@ rm -fr "$sysroot"/var
 rm -fr "$sysroot"/home
 rm -f "$sysroot"/etc/yum.repos.d/*
 mkdir -p "$sysroot"/{var,home,cfg,net,efi}
-ln -sfnr "$sysroot"/run "$sysroot"/var/run
-ln -sfnr "$sysroot"/run/lock "$sysroot"/var/lock
 
-chroot "$sysroot" restorecon -m -v -F -R /usr /etc /var
-chroot "$sysroot" restorecon -m -v -F /cfg /efi /home /net /root
+# ------------------------------------------------------------------------------
+# SELinux relabel all the files
+mount -t selinuxfs none "$sysroot/sys/fs/selinux"
+chroot "$sysroot" restorecon -m -v -F -R /usr /etc
+chroot "$sysroot" restorecon -m -v -F /cfg /efi /home /var /net /root
+umount "$sysroot/sys/fs/selinux"
 
+# ------------------------------------------------------------------------------
+# umount everything
 for i in "$sysroot"/{dev,sys/fs/selinux,sys,proc,run}; do
     [[ -d "$i" ]] && mountpoint -q "$i" && umount "$i"
 done
