@@ -3,6 +3,5 @@ systemd-bootchart
 grubby
 grub*
 plymouth
-httpd
 gnome-boxes
 dbxtool
