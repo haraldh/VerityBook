@@ -363,8 +363,6 @@ umount "$sysroot"/var/cache/dnf
 
 mkdir -p "$sysroot"/usr/share/factory/{var,cfg}
 
-chroot "$sysroot" update-ca-trust
-
 #---------------
 # tpm2-tss
 if [[ -f "$sysroot"/usr/lib/udev/rules.d/60-tpm-udev.rules ]]; then
@@ -645,6 +643,10 @@ rm -fr "$sysroot"/etc/systemd/system/syslog.service
 if [[ -f "$sysroot"/etc/modprobe.d/kvm.conf ]]; then
     sed -i -e 's/#options/options/g' "$sysroot"/etc/modprobe.d/kvm.conf
 fi
+
+#---------------
+# CA
+chroot "$sysroot" update-ca-trust
 
 #---------------
 # var
