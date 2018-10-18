@@ -17,6 +17,8 @@ Creates a directory with a readonly root on squashfs, a dm_verity file and an EF
   --gpgkey FILE      Use FILE as the signing gpg key
   --reposd DIR       Use DIR as the dnf repository directory
   --noupdate         Do not install from Fedora Updates
+  --noscripts        Do not rpm scripts
+  --statedir DIR     Use DIR to preserve state across builds like uid/gid
 EOF
 }
 
@@ -37,7 +39,9 @@ TEMP=$(
         --long quirks: \
         --long gpgkey: \
         --long reposd: \
+        --long statedir: \
         --long noupdates \
+        --long noscripts \
         -- "$@"
     )
 
@@ -98,8 +102,16 @@ while true; do
             REPOSD="$2"
             shift 2; continue
             ;;
+        '--statedir')
+            STATEDIR="$2"
+            shift 2; continue
+            ;;
         '--noupdates')
             unset WITH_UPDATES
+            shift 1; continue
+            ;;
+        '--noscripts')
+            NO_SCRIPTS=1
             shift 1; continue
             ;;
         '--')
@@ -120,6 +132,8 @@ VERSION_ID="${RELEASEVER}.$(date -u +'%Y%m%d%H%M%S')"
 OUTDIR=${OUTDIR:-"${CURDIR}/${NAME}-${VERSION_ID}"}
 GPGKEY=${GPGKEY:-${NAME}.gpg}
 REPOSD=${REPOSD:-/etc/yum.repos.d}
+STATEDIR=${STATEDIR:-"${BASEDIR}/${NAME}"}
+
 readonly OLD_SELINUX=$(getenforce)
 
 [[ $TMPDIR ]] || TMPDIR=/var/tmp
@@ -161,12 +175,15 @@ readonly sysroot="${MY_TMPDIR}/sysroot"
 # We need to preserve old uid/gid
 mkdir -p "$sysroot"/etc
 for i in passwd shadow group gshadow subuid subgid; do
-    [[ -e "${BASEDIR}/${NAME}/$i" ]] || continue
-    cp -a "${BASEDIR}/${NAME}/$i" "$sysroot"/etc/"$i"
+    [[ -e "${STATEDIR}/$i" ]] || continue
+    cp -a "${STATEDIR}/$i" "$sysroot"/etc/"$i"
 done
 
 chown -R +0.+0 "$sysroot"
-chmod 0000 "$sysroot"/etc/{shadow,gshadow}
+for i in "$sysroot"/etc/{shadow,gshadow}; do
+    [[ -e "$i" ]] || continue
+    chmod 0000 "$i"
+done
 
 mkdir -p "$sysroot"/{dev,proc,sys,run}
 mount -o bind /proc "$sysroot/proc"
@@ -177,12 +194,40 @@ mount -t devtmpfs devtmpfs "$sysroot/dev"
 mkdir -p "$sysroot"/var/cache/dnf
 mount -o bind /var/cache/dnf "$sysroot"/var/cache/dnf
 
+if [[ $NO_SCRIPTS ]]; then
+    mkdir "$sysroot"/usr
+    mkdir "$sysroot"/usr/bin
+    mkdir "$sysroot"/usr/sbin
+    mkdir "$sysroot"/usr/lib
+    mkdir "$sysroot"/usr/lib/debug
+    mkdir "$sysroot"/usr/lib/debug/usr/
+    mkdir "$sysroot"/usr/lib/debug/usr/bin
+    mkdir "$sysroot"/usr/lib/debug/usr/sbin
+    mkdir "$sysroot"/usr/lib/debug/usr/lib
+    mkdir "$sysroot"/usr/lib/debug/usr/lib64
+    mkdir "$sysroot"/usr/lib64
+    ln -s usr/bin "$sysroot"/bin
+    ln -s usr/sbin "$sysroot"/sbin
+    ln -s usr/lib "$sysroot"/lib
+    ln -s usr/bin "$sysroot"/usr/lib/debug/bin
+    ln -s usr/lib "$sysroot"/usr/lib/debug/lib
+    ln -s usr/lib64 "$sysroot"/usr/lib/debug/lib64
+    ln -s ../.dwz "$sysroot"/usr/lib/debug/usr/.dwz
+    ln -s usr/sbin "$sysroot"/usr/lib/debug/sbin
+    ln -s usr/lib64 "$sysroot"/lib64
+    mkdir "$sysroot"/run || :
+    mkdir "$sysroot"/var || :
+    ln -s ../run "$sysroot"/var/run
+    ln -s ../run/lock "$sysroot"/var/lock
+fi
+
 dnf -v --nogpgcheck \
     --installroot "$sysroot"/ \
     --releasever "$RELEASEVER" \
     --exclude="$EXCLUDELIST" \
     --setopt=keepcache=True \
     --setopt=reposdir="$REPOSD" \
+    ${NO_SCRIPTS:+ --setopt=tsflags=noscripts} \
     install -y \
     dracut \
     passwd \
@@ -242,11 +287,11 @@ done
 find "$sysroot" -name '*.rpmnew' -print0 | xargs -0 rm -fv
 
 # We need to preserve old uid/gid
-mkdir -p ${BASEDIR}/${NAME}
+mkdir -p "${STATEDIR}"
 for i in passwd shadow group gshadow subuid subgid; do
-    cp "$sysroot"/etc/"$i" ${BASEDIR}/${NAME}
-    chown "$USER" "${BASEDIR}/${NAME}/$i"
-    chmod u+r "${BASEDIR}/${NAME}/$i"
+    cp "$sysroot"/etc/"$i" "${STATEDIR}"
+    chown "$USER" "${STATEDIR}/$i"
+    chmod u+r "${STATEDIR}/$i"
 done
 
 # ------------------------------------------------------------------------------
@@ -283,6 +328,10 @@ sed -ie 's#\(tpm2_[^ ]*\) #\1 -T device:${TPM2TOOLS_DEVICE_FILE[0]} #g' "$sysroo
 # rngd
 ln -fsnr "$sysroot"/usr/lib/systemd/system/rngd.service "$sysroot"/usr/lib/systemd/system/basic.target.wants/rngd.service
 
+if [[ $NO_SCRIPTS ]]; then
+    chroot  "$sysroot" depmod -a $KVER
+fi
+
 chroot  "$sysroot" \
 	dracut -N --kver $KVER --force \
 	--filesystems "squashfs vfat xfs" \
@@ -302,7 +351,11 @@ chroot  "$sysroot" \
 	--install /usr/lib64/libtss2-esys.so.0 \
 	--install /usr/lib64/libtss2-tcti-device.so.0 \
 	--install /sbin/rngd \
-	--install /usr/lib/systemd/system/basic.target.wants/rngd.service
+	--install /usr/lib/systemd/system/basic.target.wants/rngd.service \
+	--reproducible \
+	/boot/initrd
+
+#chroot  "$sysroot" bash -i
 
 rm "$sysroot"/pre-pivot.sh
 
@@ -626,10 +679,13 @@ echo 'C /var/mail - - - - -' >>  "$sysroot"/usr/lib/tmpfiles.d/var-quirk.conf
 
 mv "$sysroot"/lib/tmpfiles.d-var.conf "$sysroot"/lib/tmpfiles.d/var.conf
 
-sed -i -e "s#VERSION_ID=.*#VERSION_ID=$VERSION_ID#" "$sysroot"/etc/os-release
-sed -i -e "s#NAME=.*#NAME=$NAME#" "$sysroot"/etc/os-release
+if [[ -f "$sysroot"/etc/os-release ]]; then
+    sed -i -e "s#VERSION_ID=.*#VERSION_ID=$VERSION_ID#" "$sysroot"/etc/os-release
+    sed -i -e "s#NAME=.*#NAME=$NAME#" "$sysroot"/etc/os-release
+fi
 
-mv -v "$sysroot"/boot/*/*/initrd "$MY_TMPDIR"/
+mv -v "$sysroot"/boot/initrd "$MY_TMPDIR"/initrd
+
 cp "$sysroot"/lib/modules/*/vmlinuz "$MY_TMPDIR"/linux
 
 if [[ -d "$sysroot"/boot/efi/EFI/fedora ]]; then
@@ -721,4 +777,3 @@ EOF
 
 chown "$USER" "${OUTDIR%/*}/${NAME}-latest.json"
 setenforce $OLD_SELINUX
-
