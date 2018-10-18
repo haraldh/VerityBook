@@ -107,6 +107,7 @@ man-db
 mc
 meson
 midisport-firmware
+mosh
 nautilus
 nfs-utils
 nss-mdns
@@ -120,6 +121,7 @@ pkgconfig
 psmisc
 python3-devel
 python3-lxml
+python3-wheel
 qrencode-devel
 rpcbind
 rsync
@@ -132,3 +134,4 @@ virt-manager
 xz
 xz-devel
 zd1211-firmware
+
