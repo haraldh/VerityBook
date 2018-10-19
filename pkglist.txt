@@ -131,6 +131,7 @@ thunderbird
 tree
 vim-enhanced
 virt-manager
+xdelta
 xz
 xz-devel
 zd1211-firmware
