@@ -717,8 +717,7 @@ done
 
 # ------------------------------------------------------------------------------
 # sysroot
-mksquashfs "$MY_TMPDIR"/sysroot "$MY_TMPDIR"/root.squashfs.img \
-	   -noDataCompression -noFragmentCompression -noXattrCompression -noInodeCompression
+mksquashfs "$MY_TMPDIR"/sysroot "$MY_TMPDIR"/root.squashfs.img
 
 # ------------------------------------------------------------------------------
 # verity
