@@ -645,6 +645,11 @@ if [[ -f "$sysroot"/etc/modprobe.d/kvm.conf ]]; then
     sed -i -e 's/#options/options/g' "$sysroot"/etc/modprobe.d/kvm.conf
 fi
 
+if [[ -f /etc/fwupd/uefi.conf ]]; then
+    sed -i -e 's#RequireShimForSecureBoot=.*#RequireShimForSecureBoot=false#g' \
+        /etc/fwupd/uefi.conf
+fi
+
 #---------------
 # CA
 chroot "$sysroot" update-ca-trust
