@@ -307,9 +307,9 @@ chroot "$sysroot" bash -c '
 '
 umount "$sysroot/sys/fs/selinux"
 
-cp "$CURDIR/clonedisk.sh" "$sysroot"/usr/bin/clonedisk
-cp "$CURDIR/update.sh" "$sysroot"/usr/bin/update
-cp "$CURDIR/update.sh" "$sysroot"/usr/bin/update
+cp "$CURDIR/clonedisk.sh" "$sysroot"/usr/bin/fedorabook-clonedisk
+cp "$CURDIR/update.sh" "$sysroot"/usr/bin/fedorabook-update
+cp "$CURDIR/mkimage.sh" "$sysroot"/usr/bin/fedorabook-mkimage
 
 mkdir -p "$sysroot"/etc/pki/${NAME}
 openssl x509 -in "${CURDIR}/${CRT}" -pubkey -noout > "$sysroot"/etc/pki/${NAME}/pubkey
