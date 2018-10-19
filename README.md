@@ -53,13 +53,7 @@ All configurable files have been whitelisted and moved to /cfg.
 - add admin LUKS key via [public key](https://blog.g3rt.nl/luks-smartcard-or-token.html)
 - sssd
 - support more clevis pins and mixed pins
-- firmware update
 - option to always clean data disk on boot
-- instead of gpg use:
-```bash
-$ openssl dgst -sha256 -sign ../DB.key -out sha512sum.txt.sig sha512sum.txt
-$ openssl dgst -sha256 -verify  <(openssl x509 -in ../DB.crt -pubkey -noout) -signature sha512sum.txt.sig sha512sum.txt
-```
 
 ## Complete / What works already?
 - boot from single efi binary
@@ -70,6 +64,7 @@ $ openssl dgst -sha256 -verify  <(openssl x509 -in ../DB.crt -pubkey -noout) -si
 - /home /cfg and /var on single data partition
 - Secure Boot
 - selinux
+- firmware update (works, but needs a secure boot signed fwup*.efi)
 
 ## Known Failures
 - no kernel command line on DELL ( you need a newer systemd https://github.com/systemd/systemd/pull/10001 )
@@ -171,7 +166,9 @@ If you cannot:
 - use the option ```--crypttpm2```, if you have a TPM2 chip
 - use the option ```--crypt``` otherwise
 
-```$ sudo clonedisk <options> <usb stick device> <harddisk device>```
+```bash
+$ sudo fedorabook-clonedisk <options> <usb stick device> <harddisk device>
+```
 
 ### Post
 
@@ -182,15 +179,15 @@ The first boot takes longer as the system tries to bind the LUKS to the TPM2 on 
 It also populates ```/var``` with the missing directories.
 
 You can always clear the data partition via:
-```
+```bash
 # wipefs --all --force /dev/<disk partition 5>
 ```
 and then either make a xfs
-```
+```bash
 # mkfs.xfs -L data /dev/<disk partition 5>
 ```
 or LUKS
-```
+```bash
 # echo -n "zero key" | cryptsetup luksFormat --type luks2 /dev/<disk partition 4> /dev/stdin
 # echo -n "zero key" | cryptsetup luksFormat --type luks2 /dev/<disk partition 5> /dev/stdin
 ```
@@ -211,7 +208,7 @@ The initial password is ```zero key```.
 ## Updating
 
 ```bash
-# systemd-inhibit update <UPDATE-URL>
+# systemd-inhibit fedorabook-update <UPDATE-URL>
 ```
 
 ## Secure Boot
