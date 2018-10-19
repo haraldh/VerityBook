@@ -647,7 +647,7 @@ fi
 
 if [[ -f /etc/fwupd/uefi.conf ]]; then
     sed -i -e 's#RequireShimForSecureBoot=.*#RequireShimForSecureBoot=false#g' \
-        /etc/fwupd/uefi.conf
+        "$sysroot"/etc/fwupd/uefi.conf
 fi
 
 #---------------
