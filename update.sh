@@ -199,7 +199,9 @@ if [[ ${FILES["update.sh"]} ]] && [[ -e ./update.sh ]]; then
  exit $?
 fi
 
-dd status=progress if=root.img of=${ROOT_DEV}-part${NEW_ROOT_PARTNO}
+dd bs=4096 conv=fsync status=progress \
+    if=root.img \
+    of=${ROOT_DEV}-part${NEW_ROOT_PARTNO}
 
 # set the new partition uuids
 ROOT_UUID=${ROOT_HASH:32:8}-${ROOT_HASH:40:4}-${ROOT_HASH:44:4}-${ROOT_HASH:48:4}-${ROOT_HASH:52:12}

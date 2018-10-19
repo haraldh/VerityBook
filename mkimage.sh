@@ -182,7 +182,7 @@ umount "$MY_TMPDIR"/boot
 
 # ------------------------------------------------------------------------------
 # root1
-dd if="$SOURCE"/root.img of=${DEV_PART}2 status=progress
+dd bs=4096 if="$SOURCE"/root.img of=${DEV_PART}2 status=progress
 
 # ------------------------------------------------------------------------------
 # data
