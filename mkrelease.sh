@@ -6,15 +6,15 @@ Usage: $PROGNAME [OPTION]
 
   -h, --help             Display this help
   --nosign               Don't sign the EFI executable
-  --dbkey KEY            Use KEY as certification key for EFI signing
-  --dbcrt CRT            Use CRT as certification for EFI signing
+  --key KEY            Use KEY as certification key for EFI signing
+  --crt CRT            Use CRT as certification for EFI signing
 EOF
 }
 
 TEMP=$(
     getopt -o '' \
-        --long dbkey: \
-        --long dbcrt: \
+        --long key: \
+        --long crt: \
         --long nosign \
         --long notar \
     --long help \
@@ -31,12 +31,12 @@ unset TEMP
 
 while true; do
     case "$1" in
-        '--dbkey')
-            DBKEY="$(readlink -e $2)"
+        '--key')
+            KEY="$(readlink -e $2)"
             shift 2; continue
             ;;
-        '--dbcrt')
-            DBCRT="$(readlink -e $2)"
+        '--crt')
+            CRT="$(readlink -e $2)"
             shift 2; continue
             ;;
         '--nosign')
@@ -64,24 +64,29 @@ done
 
 JSON="$(realpath -e $1)"
 BASEDIR="${JSON%/*}"
-IMAGE="${BASEDIR}/$(jq -r '.name' ${JSON})-$(jq -r '.version' ${JSON})"
+NAME="$(jq -r '.name' ${JSON})"
+VERSION="$(jq -r '.version' ${JSON})"
+IMAGE="${BASEDIR}/${NAME}-${VERSION}"
+CRT=${CRT:-${BASEDIR}/${NAME}.crt}
+KEY=${KEY:-${BASEDIR}/${NAME}.key}
 
 pushd "$IMAGE"
 if ! [[ $NOSIGN ]]; then
-    if ! [[ $DBKEY ]] || ! [[ $DBCRT ]]; then
-        echo "Need --dbkey KEY --dbcrt CRT options"
+    if ! [[ $KEY ]] || ! [[ $CRT ]]; then
+        echo "Cannot find $KEY and $CRT"
+        echo "Need --key KEY --crt CRT options"
         exit 1
     fi
     for i in $(find . -type f -name '*.efi'); do
         [[ -f "$i" ]] || continue
-        if ! sbverify --cert "$DBCRT" "$i" &>/dev/null ; then
-            sbsign --key "$DBKEY" --cert "$DBCRT" --output "${i}signed" "$i"
+        if ! sbverify --cert "$CRT" "$i" &>/dev/null ; then
+            sbsign --key "$KEY" --cert "$CRT" --output "${i}signed" "$i"
             mv "${i}signed" "$i"
         fi
     done
 fi
 [[ -f sha512sum.txt ]] || sha512sum $(find . -type f) > sha512sum.txt
-[[ -f sha512sum.txt.sig ]] || gpg2 --detach-sign sha512sum.txt
+[[ -f sha512sum.txt.sig ]] || openssl dgst -sha256 -sign "$KEY" -out sha512sum.txt.sig sha512sum.txt
 
 popd
 

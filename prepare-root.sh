@@ -37,7 +37,7 @@ TEMP=$(
         --long releasever: \
         --long logo: \
         --long quirks: \
-        --long gpgkey: \
+        --long crt: \
         --long reposd: \
         --long statedir: \
         --long noupdates \
@@ -94,8 +94,8 @@ while true; do
             QUIRKS+=( $2 )
             shift 2; continue
             ;;
-        '--gpgkey')
-            GPGKEY="$2"
+        '--crt')
+            CRT="$(readlink -e $2)"
             shift 2; continue
             ;;
         '--reposd')
@@ -130,7 +130,7 @@ NAME=${NAME:-"FedoraBook"}
 RELEASEVER=${RELEASEVER:-$VERSION_ID}
 VERSION_ID="${RELEASEVER}.$(date -u +'%Y%m%d%H%M%S')"
 OUTDIR=${OUTDIR:-"${CURDIR}/${NAME}-${VERSION_ID}"}
-GPGKEY=${GPGKEY:-${NAME}.gpg}
+CRT=${CRT:-${NAME}.crt}
 REPOSD=${REPOSD:-/etc/yum.repos.d}
 STATEDIR=${STATEDIR:-"${BASEDIR}/${NAME}"}
 
@@ -312,7 +312,8 @@ cp "$CURDIR/update.sh" "$sysroot"/usr/bin/update
 cp "$CURDIR/update.sh" "$sysroot"/usr/bin/update
 
 mkdir -p "$sysroot"/etc/pki/${NAME}
-cp "${CURDIR}/${GPGKEY}" "$sysroot"/etc/pki/${NAME}/GPG-KEY
+openssl x509 -in "${CURDIR}/${CRT}" -pubkey -noout > "$sysroot"/etc/pki/${NAME}/pubkey
+cp "${CURDIR}/${CRT}" "$sysroot"/etc/pki/${NAME}/crt
 
 rpm --root "$sysroot" -qa | sort > "$sysroot"/usr/rpm-list.txt
 

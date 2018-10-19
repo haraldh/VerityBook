@@ -178,7 +178,8 @@ cd ${IMAGE}
 
 if ! [[ $NO_CHECK ]]; then
     # check integrity
-    gpg2 --no-default-keyring --keyring /etc/pki/${NAME}/GPG-KEY --verify sha512sum.txt.sig sha512sum.txt
+    openssl dgst -sha256 -verify "$sysroot"/etc/pki/${NAME}/pubkey \
+        -signature sha512sum.txt.sig sha512sum.txt
     sha512sum --strict -c sha512sum.txt
     unset FILES; declare -A FILES
     while read _ file || [[ $file ]]; do
