@@ -10,6 +10,8 @@ Usage: $PROGNAME [OPTION]
   -h, --help             Display this help
   --force                Update, even if the signature checks fail
   --dir DIR              Update from DIR, instead of downloading
+  --nocheck              Do not check the integrity of the update data
+  --nodownload           Use the existing *.json file in the current directory
 EOF
 }
 
@@ -18,7 +20,8 @@ TEMP=$(
         --long dir: \
         --long force \
         --long nocheck \
-	    --long help \
+        --long nodownload \
+        --long help \
         -- "$@"
     )
 
@@ -42,6 +45,10 @@ while true; do
             ;;
         '--nocheck')
 	        NO_CHECK="y"
+            shift 1; continue
+            ;;
+        '--nodownload')
+	        NO_DOWNLOAD="y"
             shift 1; continue
             ;;
         '--help')
@@ -148,21 +155,8 @@ trap '
 # clean up after ourselves no matter how we die.
 trap 'exit 1;' SIGINT
 
-cd "$MY_TMPDIR"
 
-if ! [[ $USE_DIR ]]; then
-    curl ${BASEURL}/${NAME}-latest.json --output ${NAME}-latest.json
-
-    IMAGE="$(jq -r '.name' ${NAME}-latest.json)-$(jq -r '.version' ${NAME}-latest.json)"
-    ROOT_HASH=$(jq -r '.roothash' ${NAME}-latest.json)
-
-    if ! [[ $FORCE ]] && [[ $CURRENT_ROOT_HASH == $ROOT_HASH ]]; then
-        echo "Already up2date"
-        exit 1
-    fi
-
-    [[ -d ${IMAGE} ]] || curl ${BASEURL}/${IMAGE}.tgz | tar xzf -
-else
+if [[ $USE_DIR ]]; then
     IMAGE="$USE_DIR"
     ROOT_HASH=$(<"$IMAGE"/root-hash.txt)
 
@@ -170,21 +164,43 @@ else
         echo "Already up2date"
         exit 1
     fi
+else
+    if ! [[ $NO_DOWNLOAD ]]; then
+        cd "$MY_TMPDIR"
+        JSON="${NAME}-latest.json"
+        curl ${BASEURL}/${JSON} --output ${JSON}
+    else
+        JSON="$(realpath $1)"
+        cd ${JSON%/*}
+    fi
+
+    IMAGE="$(jq -r '.name' ${JSON})-$(jq -r '.version' ${JSON})"
+    ROOT_HASH=$(jq -r '.roothash' ${JSON})
+
+    if ! [[ $FORCE ]] && [[ $CURRENT_ROOT_HASH == $ROOT_HASH ]]; then
+        echo "Already up2date"
+        exit 1
+    fi
+
+    if ! [[ $NO_DOWNLOAD ]]; then
+        [[ -d ${IMAGE} ]] || curl ${BASEURL}/${IMAGE}.tgz | tar xzf -
+    fi
 fi
 
 [[ -d ${IMAGE} ]]
 
 cd ${IMAGE}
 
+unset FILES; declare -A FILES
+while read _ file || [[ $file ]]; do
+    FILES["$file"]="1"
+done < sha512sum.txt
+
 if ! [[ $NO_CHECK ]]; then
     # check integrity
     openssl dgst -sha256 -verify "$sysroot"/etc/pki/${NAME}/pubkey \
         -signature sha512sum.txt.sig sha512sum.txt
     sha512sum --strict -c sha512sum.txt
-    unset FILES; declare -A FILES
-    while read _ file || [[ $file ]]; do
-        FILES["$file"]="1"
-    done < sha512sum.txt
     for i in $(find . -type f); do
         [[ $i == ./sha512sum.txt ]] && continue
         [[ $i == ./sha512sum.txt.sig ]] && continue
