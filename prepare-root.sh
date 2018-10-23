@@ -675,7 +675,9 @@ if [[ -f "$sysroot"/etc/modprobe.d/kvm.conf ]]; then
     sed -i -e 's/#options/options/g' "$sysroot"/etc/modprobe.d/kvm.conf
 fi
 
-if [[ -f /etc/fwupd/uefi.conf ]]; then
+#---------------
+# tweak fwupd to not need the shim
+if [[ -f "$sysroot"/etc/fwupd/uefi.conf ]]; then
     sed -i -e 's#RequireShimForSecureBoot=.*#RequireShimForSecureBoot=false#g' \
         "$sysroot"/etc/fwupd/uefi.conf
 fi
