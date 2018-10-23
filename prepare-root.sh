@@ -805,6 +805,8 @@ echo -n "lockdown=1 quiet rd.shell=0 video=efifb:nobgrt "\
  "verity.imagesize=$IMAGE_SIZE verity.roothash=$ROOT_HASH verity.root=PARTUUID=$ROOT_UUID " \
  "verity.hashoffset=$ROOT_SIZE raid=noautodetect root=/dev/mapper/root" > "$MY_TMPDIR"/options.txt
 
+mkdir -p "$MY_TMPDIR"/efi/EFI/FedoraBook
+
 echo -n "${NAME}-${VERSION_ID}" > "$MY_TMPDIR"/release.txt
 objcopy \
     --add-section .release="$MY_TMPDIR"/release.txt --change-section-vma .release=0x20000 \
@@ -812,12 +814,11 @@ objcopy \
     ${LOGO:+--add-section .splash="$LOGO" --change-section-vma .splash=0x40000} \
     --add-section .linux="$MY_TMPDIR"/linux --change-section-vma .linux=0x2000000 \
     --add-section .initrd="$MY_TMPDIR"/initrd --change-section-vma .initrd=0x3000000 \
-    "${BASEDIR}"/linuxx64.efi.stub "$MY_TMPDIR"/bootx64.efi
+    "${BASEDIR}"/linuxx64.efi.stub "$MY_TMPDIR"/efi/EFI/${NAME}/bootx64.efi
 
 
 mkdir -p "$OUTDIR"
 mv "$MY_TMPDIR"/root-hash.txt \
-   "$MY_TMPDIR"/bootx64.efi \
    "$MY_TMPDIR"/root.img \
    "$MY_TMPDIR"/release.txt \
    "$MY_TMPDIR"/options.txt \
@@ -829,7 +830,7 @@ mv "$MY_TMPDIR"/root-hash.txt \
 
 for i in LockDown.efi Shell.efi startup.nsh; do
     [[ -e "${BASEDIR}"/$i ]] || continue
-    cp "$i" "$OUTDIR"/efi
+    cp "$i" "$OUTDIR"/efi/EFI/${NAME}/
 done
 
 chown -R "$USER" "$OUTDIR"

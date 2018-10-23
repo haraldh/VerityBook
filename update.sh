@@ -210,14 +210,23 @@ ROOT_UUID=${ROOT_HASH:32:8}-${ROOT_HASH:40:4}-${ROOT_HASH:44:4}-${ROOT_HASH:48:4
 sfdisk --part-uuid ${ROOT_DEV} ${NEW_ROOT_PARTNO} ${ROOT_UUID}
 
 # install to /efi
-mkdir -p /efi/EFI/${NAME}
-cp bootx64.efi /efi/EFI/${NAME}/${NEW_ROOT_NUM}.efi
-
-if [[ -d efi ]]; then
-    cp -vr efi/* /efi/
+if [[ -d efi/EFI ]]; then
+    cp -vr efi/EFI/* /efi/EFI/
 fi
 
-mv /efi/EFI/${NAME}/${OLD_ROOT_NUM}.efi /efi/EFI/${NAME}/_${OLD_ROOT_NUM}.efi || :
+if [[ ! -f /efi/EFI/Boot/bootx64.efi ]] \
+    || cmp --quiet /efi/EFI/${NAME}/${OLD_ROOT_NUM}.efi /efi/EFI/Boot/bootx64.efi \
+    || cmp --quiet /efi/EFI/${NAME}/_${OLD_ROOT_NUM}.efi /efi/EFI/Boot/bootx64.efi
+then
+    cp /efi/EFI/${NAME}/bootx64.efi /efi/EFI/Boot/bootx64.efi
+fi
+
+cp /efi/EFI/${NAME}/bootx64.efi /efi/EFI/${NAME}/${NEW_ROOT_NUM}.efi
+
+if [[ -f /efi/EFI/${NAME}/${OLD_ROOT_NUM}.efi ]]; then
+    mv /efi/EFI/${NAME}/${OLD_ROOT_NUM}.efi /efi/EFI/${NAME}/_${OLD_ROOT_NUM}.efi
+fi
+
 rm -f /efi/EFI/${NAME}/_${NEW_ROOT_NUM}.efi
 
 BOOT_ORDER=$(efibootmgr | grep BootOrder: | { read _ a; echo "$a"; })
