@@ -835,7 +835,7 @@ done
 
 chown -R "$USER" "$OUTDIR"
 
-cat > "${BASEOUTDIR}/${NAME}-latest.json" <<EOF
+cat > "${OUTDIR}/release.json" <<EOF
 {
         "roothash": "$ROOT_HASH",
         "rootsize": "$ROOT_SIZE",
@@ -844,5 +844,6 @@ cat > "${BASEOUTDIR}/${NAME}-latest.json" <<EOF
 }
 EOF
 
-chown "$USER" "${BASEOUTDIR}/${NAME}-latest.json"
+chown "$USER" "${OUTDIR}/release.json"
+cp -a "${OUTDIR}/release.json" "${BASEOUTDIR}/${NAME}-latest.json"
 setenforce $OLD_SELINUX
