@@ -2,7 +2,7 @@
 
 usage() {
     cat << EOF
-Usage: $PROGNAME [OPTION]
+Usage: $PROGNAME [OPTION] LATEST.JSON
 
   -h, --help             Display this help
   --nosign               Don't sign the EFI executable
@@ -17,7 +17,7 @@ TEMP=$(
         --long crt: \
         --long nosign \
         --long notar \
-    --long help \
+        --long help \
         -- "$@"
     )
 
@@ -61,12 +61,16 @@ while true; do
             ;;
     esac
 done
+PROGNAME=${0##*/}
+BASEDIR=$(realpath ${0%/*})
 
 JSON="$(realpath -e $1)"
-BASEDIR="${JSON%/*}"
+JSONDIR="${JSON%/*}"
 NAME="$(jq -r '.name' ${JSON})"
 VERSION="$(jq -r '.version' ${JSON})"
-IMAGE="${BASEDIR}/${NAME}-${VERSION}"
+ROOTHASH="$(jq -r '.roothash' ${JSON})"
+IMAGE="${JSONDIR}/${NAME}-${VERSION}"
+HASH_IMAGE="${JSONDIR}/${NAME}-${ROOTHASH}"
 CRT=${CRT:-${BASEDIR}/${NAME}.crt}
 KEY=${KEY:-${BASEDIR}/${NAME}.key}
 
@@ -85,11 +89,19 @@ if ! [[ $NOSIGN ]]; then
         fi
     done
 fi
+
 [[ -f sha512sum.txt ]] || sha512sum $(find . -type f) > sha512sum.txt
 [[ -f sha512sum.txt.sig ]] || openssl dgst -sha256 -sign "$KEY" -out sha512sum.txt.sig sha512sum.txt
 
-popd
-
-if ! [[ $NOTAR ]] && ! [[ -e "$IMAGE".tgz ]]; then
-    tar cf - -C "${IMAGE%/*}" "${IMAGE##*/}" | pigz -c > "$IMAGE".tgz
+if ! [[ $NOTAR ]]; then
+    [[ -e "$IMAGE".tgz ]] || tar cf - -C "${IMAGE%/*}" "${IMAGE##*/}" | pigz -c > "${IMAGE}.tgz"
+    if ! [[ -e "$HASH_IMAGE-efi".tgz ]]; then
+        tar cf - efi | pigz -c > "$HASH_IMAGE-efi.tgz"
+    fi
+    [[ $NOSIGN ]] || openssl dgst -sha256 -sign "$KEY" \
+        -out "${HASH_IMAGE}-efi.tgz.sig" "${HASH_IMAGE}-efi.tgz"
+    [[ $NOSIGN ]] || openssl dgst -sha256 -sign "$KEY" \
+        -out "${JSONDIR}/${NAME}-${ROOTHASH}.img.sig" "$IMAGE/root.img"
 fi
+
+popd
