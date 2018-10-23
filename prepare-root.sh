@@ -683,6 +683,34 @@ if [[ -f "$sysroot"/etc/fwupd/uefi.conf ]]; then
 fi
 
 #---------------
+# Disable dbxtool
+if [[ -f "$sysroot"/usr/lib/systemd/system/dbxtool.service ]]; then
+    systemctl --root="$sysroot" disable dbxtool
+fi
+
+#---------------
+# Tweak auditd.service
+if [[ -f "$sysroot"/usr/lib/systemd/system/auditd.service ]]; then
+    sed -i -e 's%^ExecStartPost=-/sbin/augenrules%#ExecStartPost=-/sbin/augenrules%' \
+        -e 's%^#ExecStartPost=-/sbin/auditctl%ExecStartPost=-/sbin/auditctl%' \
+        "$sysroot"/usr/lib/systemd/system/auditd.service
+    chroot "$sysroot" augenrules
+fi
+
+#---------------
+# remove the shim
+for i in /boot/efi/EFI/BOOT/BOOTX64.EFI \
+    /boot/efi/EFI/BOOT/fbx64.efi \
+    /boot/efi/EFI/fedora/BOOTX64.CSV \
+    /boot/efi/EFI/fedora/mmx64.efi \
+    /boot/efi/EFI/fedora/shimx64-fedora.efi \
+    /boot/efi/EFI/fedora/shimx64.efi \
+    /boot/efi/EFI/fedora/shim.efi \
+    ; do
+    rm -f "$sysroot/$i"
+done
+
+#---------------
 # CA
 chroot "$sysroot" update-ca-trust
 
