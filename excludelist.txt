@@ -4,4 +4,3 @@ grubby
 grub*
 plymouth
 gnome-boxes
-dbxtool
