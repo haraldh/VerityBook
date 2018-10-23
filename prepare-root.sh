@@ -718,6 +718,7 @@ chroot "$sysroot" update-ca-trust
 # var
 rm -fr "$sysroot"/var/lib/selinux
 rm -fr "$sysroot"//usr/lib/fontconfig/cache
+cp -avr "$sysroot"/var/lib/rpm "$STATEDIR"/
 rm -fr "$sysroot"/var/lib/rpm
 rm -fr "$sysroot"/var/lib/sepolgen
 rm -fr "$sysroot"/var/lib/dnf
