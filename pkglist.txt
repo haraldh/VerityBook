@@ -42,6 +42,8 @@ fedpkg
 firefox
 firewalld-filesystem
 flatpak
+fwupd
+fwupdate-efi
 gawk
 gcc
 gcc-c++
@@ -114,6 +116,7 @@ nss-mdns
 nss-tools
 openssh-server
 pam-devel
+pam_yubico
 perl-File-Slurp
 pesign
 pigz
