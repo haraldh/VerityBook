@@ -5,7 +5,7 @@ PROGNAME=${0##*/}
 
 usage() {
     cat << EOF
-Usage: $PROGNAME [OPTION]
+Usage: $PROGNAME [OPTION] DIR_OR_LATEST-JSON
 
   -h, --help             Display this help
   --crypt                Use Luks2 to encrypt the data partition (default PW: 1)
@@ -19,10 +19,10 @@ TEMP=$(
     getopt -o '' \
     --long crypt \
     --long crypttpm2 \
-	--long simple \
-	--long update \
-	--long efishell \
-	--long help \
+    --long simple \
+    --long update \
+    --long efishell \
+    --long help \
     -- "$@"
     )
 
