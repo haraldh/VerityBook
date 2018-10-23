@@ -170,6 +170,7 @@ trap '
        [[ -d "$i" ]] && mountpoint -q "$i" && umount "$i"
     done
     [[ $MY_TMPDIR ]] && rm -rf --one-file-system -- "$MY_TMPDIR"
+    (( $ret != 0 )) && [[ "$OUTDIR" ]] && rm -rf --one-file-system -- "$OUTDIR"
     setenforce $OLD_SELINUX
     exit $ret;
     ' EXIT
