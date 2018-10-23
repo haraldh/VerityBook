@@ -76,7 +76,10 @@ SOURCE=$(readlink -e "$1")
 IMAGE=$(readlink -f "$2")
 
 if ! [[ -d $SOURCE ]]; then
+    NAME="$(jq -r '.name' "$SOURCE")"
     SOURCE="${SOURCE%/*}/$(jq -r '.name' "$SOURCE")-$(jq -r '.version' "$SOURCE")"
+else
+    NAME="$(jq -r '.name' "$SOURCE"/release.json)"
 fi
 
 if ! [[ -d $SOURCE ]] || ! [[ $IMAGE ]]; then
@@ -172,10 +175,10 @@ if [[ $USE_EFISHELL ]]; then
     [[ -e "${SOURCE}"/efi/startup.nsh ]] && cp "${SOURCE}"/efi/startup.nsh "$MY_TMPDIR"/boot/
     [[ -e "${SOURCE}"/efi/LockDown.efi ]] && cp "${SOURCE}"/efi/LockDown.efi "$MY_TMPDIR"/boot/
     cp "${SOURCE}"/efi/Shell.efi "$MY_TMPDIR"/boot/EFI/Boot/bootx64.efi
-    cp "$SOURCE"/efi/EFI/Boot/bootx64.efi "$MY_TMPDIR"/boot/EFI/FedoraBook/1.efi
+    cp "$SOURCE"/efi/EFI/${NAME}/bootx64.efi "$MY_TMPDIR"/boot/EFI/FedoraBook/1.efi
 else
-    cp "$SOURCE"/efi/EFI/Boot/bootx64.efi "$MY_TMPDIR"/boot/EFI/Boot/bootx64.efi
-    cp "$SOURCE"/efi/EFI/Boot/bootx64.efi "$MY_TMPDIR"/boot/EFI/FedoraBook/1.efi
+    cp "$SOURCE"/efi/EFI/${NAME}/bootx64.efi "$MY_TMPDIR"/boot/EFI/Boot/bootx64.efi
+    cp "$SOURCE"/efi/EFI/${NAME}/bootx64.efi "$MY_TMPDIR"/boot/EFI/FedoraBook/1.efi
 fi
 
 umount "$MY_TMPDIR"/boot
