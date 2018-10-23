@@ -11,6 +11,7 @@ Creates a directory with a readonly root on squashfs, a dm_verity file and an EF
   --excludelist FILE The packages to install read from FILE (default: excludelist.txt)
   --releasever NUM   Used Fedora release version NUM (default: $VERSION_ID)
   --outdir DIR       Creates DIR and puts all files in there (default: NAME-NUM-DATE)
+  --baseoutdir DIR   Parent directory of --outdir
   --name NAME        The NAME of the product (default: FedoraBook)
   --logo FILE        Uses the .bmp FILE to display as a splash screen (default: logo.bmp)
   --quirks LIST      Source the list of quirks from the quikrs directory
@@ -33,6 +34,7 @@ TEMP=$(
         --long pkglist: \
         --long excludelist: \
         --long outdir: \
+        --long baseoutdir: \
         --long name: \
         --long releasever: \
         --long logo: \
@@ -76,6 +78,10 @@ while true; do
             ;;
         '--outdir')
             OUTDIR="$2"
+            shift 2; continue
+            ;;
+        '--baseoutdir')
+            BASEOUTDIR="$2"
             shift 2; continue
             ;;
         '--name')
@@ -129,7 +135,9 @@ done
 NAME=${NAME:-"FedoraBook"}
 RELEASEVER=${RELEASEVER:-$VERSION_ID}
 VERSION_ID="${RELEASEVER}.$(date -u +'%Y%m%d%H%M%S')"
-OUTDIR=${OUTDIR:-"${CURDIR}/${NAME}-${VERSION_ID}"}
+BASEOUTDIR=${BASEOUTDIR:-"$CURDIR"}
+OUTDIR=${OUTDIR:+"${BASEOUTDIR}/${OUTDIR}"}
+OUTDIR=${OUTDIR:-"${BASEOUTDIR}/${NAME}-${VERSION_ID}"}
 CRT=${CRT:-${NAME}.crt}
 REPOSD=${REPOSD:-/etc/yum.repos.d}
 STATEDIR=${STATEDIR:-"${BASEDIR}/${NAME}"}
@@ -773,7 +781,7 @@ done
 
 chown -R "$USER" "$OUTDIR"
 
-cat > "${OUTDIR%/*}/${NAME}-latest.json" <<EOF
+cat > "${BASEOUTDIR}/${NAME}-latest.json" <<EOF
 {
         "roothash": "$ROOT_HASH",
         "rootsize": "$ROOT_SIZE",
@@ -782,5 +790,5 @@ cat > "${OUTDIR%/*}/${NAME}-latest.json" <<EOF
 }
 EOF
 
-chown "$USER" "${OUTDIR%/*}/${NAME}-latest.json"
+chown "$USER" "${BASEOUTDIR}/${NAME}-latest.json"
 setenforce $OLD_SELINUX
