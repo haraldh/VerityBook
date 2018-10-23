@@ -1,3 +1,4 @@
+libfaketime
 @Fonts
 @GNOME
 @c-development
@@ -129,8 +130,10 @@ qrencode-devel
 rpcbind
 rsync
 sbsigntools
+screen
 squashfs-tools
 thunderbird
+tmux
 tree
 vim-enhanced
 virt-manager

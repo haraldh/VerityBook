@@ -140,10 +140,8 @@ done
 [[ $EXCLUDELIST ]] || [[ -f excludelist.txt ]] && EXCLUDELIST=$(<excludelist.txt)
 NAME=${NAME:-"FedoraBook"}
 RELEASEVER=${RELEASEVER:-$VERSION_ID}
-VERSION_ID="${RELEASEVER}.$(date -u +'%Y%m%d%H%M%S')"
 BASEOUTDIR=${BASEOUTDIR:-"$CURDIR"}
 OUTDIR=${OUTDIR:+"${BASEOUTDIR}/${OUTDIR}"}
-OUTDIR=${OUTDIR:-"${BASEOUTDIR}/${NAME}-${VERSION_ID}"}
 CRT=${CRT:-${NAME}.crt}
 REPOSD=${REPOSD:-/etc/yum.repos.d}
 STATEDIR=${STATEDIR:-"${BASEDIR}/${NAME}"}
@@ -304,6 +302,12 @@ RET=$?
 if [[ $CHECK_UPDATE ]]; then
     exit $RET
 fi
+
+# ------------------------------------------------------------------------------
+# Record timestamp of last built package date
+LASTBUILD=$(chroot "$sysroot" bash -c 'rpm -qa --qf "%{BUILDTIME}\n"  |sort -nr | head -1')
+VERSION_ID="${RELEASEVER}.$(date -u +'%Y%m%d%H%M%S' --date @$LASTBUILD)"
+OUTDIR=${OUTDIR:-"${BASEOUTDIR}/${NAME}-${VERSION_ID}"}
 
 for i in passwd shadow group gshadow subuid subgid; do
     [[ -e "$sysroot"/etc/${i}.rpmnew ]] || continue
@@ -724,6 +728,7 @@ rm -fr "$sysroot"/var/lib/sepolgen
 rm -fr "$sysroot"/var/lib/dnf
 rm -fr "$sysroot"/var/lib/flatpak/repo/tmp
 rm -fr "$sysroot"/var/log/dnf*
+rm -fr "$sysroot"/var/log/hawkey*
 rm -fr "$sysroot"/var/cache/*/*
 rm -fr "$sysroot"/var/tmp/*
 mv "$sysroot"/lib/tmpfiles.d/var.conf "$sysroot"/lib/tmpfiles.d-var.conf
@@ -775,6 +780,10 @@ mount -t selinuxfs none "$sysroot/sys/fs/selinux"
 chroot "$sysroot" restorecon -m -v -F -R /usr /etc
 chroot "$sysroot" restorecon -m -v -F /cfg /efi /home /var /net /root
 umount "$sysroot/sys/fs/selinux"
+
+# ------------------------------------------------------------------------------
+# Change all timestamps to last built package date
+find "$sysroot" -xdev -newermt "@${LASTBUILD}" -print0 | xargs --verbose -0 touch -h --date "@${LASTBUILD}"
 
 # ------------------------------------------------------------------------------
 # umount everything
