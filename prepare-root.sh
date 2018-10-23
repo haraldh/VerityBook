@@ -369,7 +369,7 @@ chroot  "$sysroot" \
 	--add-drivers "=drivers/char/tpm" \
 	-m "bash systemd systemd-initrd modsign crypt dm kernel-modules qemu rootfs-block" \
 	-m "udev-rules dracut-systemd base fs-lib shutdown terminfo resume verity" \
-	--install "clonedisk wipefs sfdisk dd mkfs.xfs mkswap chroot mountpoint mkdir stat openssl" \
+	--install "fedorabook-clonedisk wipefs sfdisk dd mkfs.xfs mkswap chroot mountpoint mkdir stat openssl" \
 	--install "clevis clevis-luks-bind jose clevis-encrypt-tpm2 clevis-decrypt clevis-luks-unlock clevis-decrypt-tpm2"  \
 	--install "cryptsetup tail sort pwmake mktemp swapon" \
 	--install "tpm2_pcrextend tpm2_createprimary tpm2_pcrlist tpm2_createpolicy" \
