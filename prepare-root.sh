@@ -20,6 +20,7 @@ Creates a directory with a readonly root on squashfs, a dm_verity file and an EF
   --noupdate         Do not install from Fedora Updates
   --noscripts        Do not rpm scripts
   --statedir DIR     Use DIR to preserve state across builds like uid/gid
+  --check-update     Only check for updates
 EOF
 }
 
@@ -44,6 +45,7 @@ TEMP=$(
         --long statedir: \
         --long noupdates \
         --long noscripts \
+        --long check-update \
         -- "$@"
     )
 
@@ -120,6 +122,10 @@ while true; do
             NO_SCRIPTS=1
             shift 1; continue
             ;;
+        '--check-update')
+            CHECK_UPDATE=1
+            shift 1; continue
+            ;;
         '--')
             shift
             break
@@ -160,8 +166,7 @@ readonly MY_TMPDIR="$(mktemp -p "$TMPDIR/" -d -t ${PROGNAME}.XXXXXX)"
 # clean up after ourselves no matter how we die.
 trap '
     ret=$?;
-    mountpoint -q "$sysroot"/var/cache/dnf && umount "$sysroot"/var/cache/dnf
-    for i in "$sysroot"/{dev,sys/fs/selinux,sys,proc,run}; do
+    for i in "$sysroot"/{dev,sys/fs/selinux,sys,proc,run,var/lib/rpm,var/cache/dnf}; do
        [[ -d "$i" ]] && mountpoint -q "$i" && umount "$i"
     done
     [[ $MY_TMPDIR ]] && rm -rf --one-file-system -- "$MY_TMPDIR"
@@ -200,7 +205,17 @@ mount -o bind /sys "$sysroot/sys"
 mount -t devtmpfs devtmpfs "$sysroot/dev"
 
 mkdir -p "$sysroot"/var/cache/dnf
-mount -o bind /var/cache/dnf "$sysroot"/var/cache/dnf
+mkdir -p "$STATEDIR"/dnf
+mount -o bind "$STATEDIR"/dnf "$sysroot"/var/cache/dnf
+
+if [[ $CHECK_UPDATE ]]; then
+    mkdir -p "$STATEDIR"/rpm
+    mkdir -p "$sysroot"/var/lib/rpm
+    mount -o bind "$STATEDIR"/rpm "$sysroot"/var/lib/rpm
+    DNF_COMMAND="check-update"
+else
+    DNF_COMMAND="install -y"
+fi
 
 if [[ $NO_SCRIPTS ]]; then
     mkdir "$sysroot"/usr
@@ -236,7 +251,7 @@ dnf -v --nogpgcheck \
     --setopt=keepcache=True \
     --setopt=reposdir="$REPOSD" \
     ${NO_SCRIPTS:+ --setopt=tsflags=noscripts} \
-    install -y \
+    ${DNF_COMMAND} \
     dracut \
     passwd \
     rootfiles \
@@ -282,6 +297,12 @@ dnf -v --nogpgcheck \
     audit \
     dosfstools \
     $PKGLIST
+
+RET=$?
+
+if [[ $CHECK_UPDATE ]]; then
+    exit $RET
+fi
 
 for i in passwd shadow group gshadow subuid subgid; do
     [[ -e "$sysroot"/etc/${i}.rpmnew ]] || continue
