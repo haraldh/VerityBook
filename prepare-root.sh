@@ -141,7 +141,6 @@ done
 NAME=${NAME:-"FedoraBook"}
 RELEASEVER=${RELEASEVER:-$VERSION_ID}
 BASEOUTDIR=${BASEOUTDIR:-"$CURDIR"}
-OUTDIR=${OUTDIR:+"${BASEOUTDIR}/${OUTDIR}"}
 CRT=${CRT:-${NAME}.crt}
 REPOSD=${REPOSD:-/etc/yum.repos.d}
 STATEDIR=${STATEDIR:-"${BASEDIR}/${NAME}"}
@@ -177,10 +176,6 @@ trap '
 trap 'exit 1;' SIGINT
 
 setenforce 0
-
-if ! [[ -f "${BASEDIR}"/linuxx64.efi.stub ]]; then
-    cp /lib/systemd/boot/efi/linuxx64.efi.stub "${BASEDIR}"/linuxx64.efi.stub
-fi
 
 readonly sysroot="${MY_TMPDIR}/sysroot"
 
@@ -306,9 +301,9 @@ fi
 
 # ------------------------------------------------------------------------------
 # Record timestamp of last built package date
-LASTBUILD=$(chroot "$sysroot" bash -c 'rpm -qa --qf "%{BUILDTIME}\n"  |sort -nr | head -1')
-VERSION_ID="${RELEASEVER}.$(date -u +'%Y%m%d%H%M%S' --date @$LASTBUILD)"
-OUTDIR=${OUTDIR:-"${BASEOUTDIR}/${NAME}-${VERSION_ID}"}
+export SOURCE_DATE_EPOCH=$(
+    chroot "$sysroot" bash -c 'rpm -qa --qf "%{BUILDTIME}\n"' | sort -nr | head -1
+)
 
 for i in passwd shadow group gshadow subuid subgid; do
     [[ -e "$sysroot"/etc/${i}.rpmnew ]] || continue
@@ -317,6 +312,7 @@ for i in passwd shadow group gshadow subuid subgid; do
         grep -E -q "^$user:" "$sysroot"/etc/${i} && continue
         echo "$line" >> "$sysroot"/etc/${i}
     done <"$sysroot"/etc/${i}.rpmnew
+    rm -f "$sysroot"/etc/${i}- "$sysroot"/etc/${i}+
 done
 
 find "$sysroot" -name '*.rpmnew' -print0 | xargs -0 rm -fv
@@ -368,6 +364,7 @@ if [[ $NO_SCRIPTS ]]; then
     chroot  "$sysroot" depmod -a $KVER
 fi
 
+# FIXME: make dracut modules
 chroot  "$sysroot" \
 	dracut -N --kver $KVER --force \
 	--filesystems "squashfs vfat xfs" \
@@ -540,12 +537,20 @@ fi
 #---------------
 # libvirt
 if [[ -d "$sysroot"/etc/libvirt ]]; then
+    # FIXME: reproducible UUID
+    sed -i -e 's#<uuid>.*</uuid>#<uuid>6d4d7be7-2190-4d94-be06-07d1b4f45295</uuid>#' \
+        "$sysroot"/etc/libvirt/qemu/networks/default.xml
     mv "$sysroot"/etc/libvirt "$sysroot"/usr/share/factory/cfg/
     ln -fsnr "$sysroot"/cfg/libvirt "$sysroot"/etc/libvirt
     cat >> "$sysroot"/usr/lib/tmpfiles.d/libvirt.conf <<EOF
 C /cfg/libvirt - - - - -
 EOF
 fi
+
+#---------------
+# brlapi
+# FIXME: reproducible
+echo 80e770bbff7c881ab84284f58384b0a7 > "$sysroot"/etc/brlapi.key
 
 #---------------
 # resolv.conf
@@ -629,6 +634,30 @@ if [[ -f "$sysroot"/etc/autofs.conf ]]; then
     mkdir -p "$sysroot"/net
     systemctl --root "$sysroot" enable autofs
 fi
+
+#---------------
+# iscsi
+rm -fr "$sysroot"/etc/iscsi
+
+#---------------
+# FIXME: reproducible sgml catalogs
+for i in "$sysroot"/etc/sgml/catalog "$sysroot"/etc/sgml/*.cat; do
+    sort "$i" > "${i}.sorted" && mv "${i}.sorted" "$i"
+done
+
+#---------------
+# FIXME: reproducible font uuids
+for i in "$sysroot"/usr/share/fonts/*; do
+    [[ -d $i ]] || continue
+    cat "$i"/* \
+        | sha256sum \
+        | { read h _ ; echo ${h:32:8}-${h:40:4}-${h:44:4}-${h:48:4}-${h:52:12}; } \
+        > "$i"/.uuid
+done
+cat "$sysroot"/usr/share/fonts/*/.uuid \
+    | sha256sum \
+    | { read h _ ; echo ${h:32:8}-${h:40:4}-${h:44:4}-${h:48:4}-${h:52:12}; } \
+    > "$sysroot"/usr/share/fonts/.uuid
 
 #---------------
 # udev dri/card0
@@ -717,7 +746,12 @@ done
 
 #---------------
 # CA
-chroot "$sysroot" update-ca-trust
+# FIXME: reproducible java keystores
+chroot "$sysroot" bash -x -c '
+    export FAKETIME="$(date -u +"%Y-%m-%d %H:%M:%S" --date @${SOURCE_DATE_EPOCH})"
+    export LD_PRELOAD=/usr/lib64/faketime/libfaketime.so.1
+    update-ca-trust
+'
 
 #---------------
 # var
@@ -754,11 +788,6 @@ echo 'C /var/mail - - - - -' >>  "$sysroot"/usr/lib/tmpfiles.d/var-quirk.conf
 
 mv "$sysroot"/lib/tmpfiles.d-var.conf "$sysroot"/lib/tmpfiles.d/var.conf
 
-if [[ -f "$sysroot"/etc/os-release ]]; then
-    sed -i -e "s#VERSION_ID=.*#VERSION_ID=$VERSION_ID#" "$sysroot"/etc/os-release
-    sed -i -e "s#NAME=.*#NAME=$NAME#" "$sysroot"/etc/os-release
-fi
-
 mv -v "$sysroot"/boot/initrd "$MY_TMPDIR"/initrd
 
 cp "$sysroot"/lib/modules/*/vmlinuz "$MY_TMPDIR"/linux
@@ -783,22 +812,39 @@ chroot "$sysroot" restorecon -m -v -F /cfg /efi /home /var /net /root
 umount "$sysroot/sys/fs/selinux"
 
 # ------------------------------------------------------------------------------
-# Change all timestamps to last built package date
-find "$sysroot" -xdev -newermt "@${LASTBUILD}" -print0 | xargs --verbose -0 touch -h --date "@${LASTBUILD}"
-
-# ------------------------------------------------------------------------------
 # umount everything
 for i in "$sysroot"/{dev,sys/fs/selinux,sys,proc,run}; do
     [[ -d "$i" ]] && mountpoint -q "$i" && umount "$i"
 done
 
 # ------------------------------------------------------------------------------
-# sysroot
-mksquashfs "$MY_TMPDIR"/sysroot "$MY_TMPDIR"/root.squashfs.img
+# squashfs
+# FIXME: for reproducible squashfs builds honoring $SOURCE_DATE_EPOCH use
+# https://github.com/squashfskit/squashfskit
+if [[ -x "${BASEDIR}/squashfskit/squashfs-tools/mksquashfs" ]]; then
+    MKSQUASHFS="${BASEDIR}/squashfskit/squashfs-tools/mksquashfs"
+else
+    MKSQUASHFS=mksquashfs
+fi
+
+VERSION_ID="${RELEASEVER}.$(date -u +'%Y%m%d%H%M%S' --date @$SOURCE_DATE_EPOCH)"
+OUTDIR=${OUTDIR:-"${NAME}-${VERSION_ID}"}
+OUTDIR="${BASEOUTDIR}/${OUTDIR}"
+
+if [[ -f "$sysroot"/etc/os-release ]]; then
+    sed -i -e "s#VERSION_ID=.*#VERSION_ID=$VERSION_ID#" "$sysroot"/etc/os-release
+    sed -i -e "s#NAME=.*#NAME=$NAME#" "$sysroot"/etc/os-release
+fi
+
+"$MKSQUASHFS" "$MY_TMPDIR"/sysroot "$MY_TMPDIR"/root.squashfs.img
 
 # ------------------------------------------------------------------------------
 # verity
-ROOT_HASH=$(veritysetup format "$MY_TMPDIR"/root.squashfs.img "$MY_TMPDIR"/root.verity.img |& tail -1 | { read a b c; echo $c; } )
+ROOT_HASH=$(veritysetup \
+    --salt=6665646f7261626f6f6b$(printf '%lx' ${SOURCE_DATE_EPOCH}) \
+    --uuid=222722e4-58de-415b-9723-bb5dabe36034 \
+    format "$MY_TMPDIR"/root.squashfs.img "$MY_TMPDIR"/root.verity.img \
+    |& tail -1 | { read _ _ hash _; echo $hash; } )
 
 echo "$ROOT_HASH" > "$MY_TMPDIR"/root-hash.txt
 
@@ -815,17 +861,37 @@ echo -n "lockdown=1 quiet rd.shell=0 video=efifb:nobgrt "\
  "verity.imagesize=$IMAGE_SIZE verity.roothash=$ROOT_HASH verity.root=PARTUUID=$ROOT_UUID " \
  "verity.hashoffset=$ROOT_SIZE raid=noautodetect root=/dev/mapper/root" > "$MY_TMPDIR"/options.txt
 
-mkdir -p "$MY_TMPDIR"/efi/EFI/FedoraBook
-
 echo -n "${NAME}-${VERSION_ID}" > "$MY_TMPDIR"/release.txt
+
+if ! [[ $EFISTUB ]]; then
+    if [[ -e "${BASEDIR}"/linuxx64.efi.stub ]]; then
+        EFISTUB="${BASEDIR}"/linuxx64.efi.stub
+    elif [[ -e "$sysroot"/usr/lib/systemd/boot/efi/linuxx64.efi.stub ]]; then
+        EFISTUB="$sysroot"/usr/lib/systemd/boot/efi/linuxx64.efi.stub
+    elif [[ -e /lib/systemd/boot/efi/linuxx64.efi.stub ]]; then
+        EFISTUB=/lib/systemd/boot/efi/linuxx64.efi.stub
+    else
+        echo "No EFI stub found" >&2
+        exit 1
+    fi
+fi
+
+mkdir -p "$MY_TMPDIR"/efi/EFI/${NAME}
 objcopy \
     --add-section .release="$MY_TMPDIR"/release.txt --change-section-vma .release=0x20000 \
     --add-section .cmdline="$MY_TMPDIR"/options.txt --change-section-vma .cmdline=0x30000 \
     ${LOGO:+--add-section .splash="$LOGO" --change-section-vma .splash=0x40000} \
     --add-section .linux="$MY_TMPDIR"/linux --change-section-vma .linux=0x2000000 \
     --add-section .initrd="$MY_TMPDIR"/initrd --change-section-vma .initrd=0x3000000 \
-    "${BASEDIR}"/linuxx64.efi.stub "$MY_TMPDIR"/efi/EFI/${NAME}/bootx64.efi
+    "${EFISTUB}" "$MY_TMPDIR"/efi/EFI/${NAME}/bootx64.efi
 
+for i in LockDown.efi Shell.efi startup.nsh; do
+    [[ -e "${BASEDIR}"/$i ]] || continue
+    cp "$i" "$MY_TMPDIR"/efi/EFI/${NAME}/
+done
+
+find "$MY_TMPDIR"/efi -xdev -newermt "@${SOURCE_DATE_EPOCH}" -print0 \
+    | xargs --verbose -0 touch -h --date "@${SOURCE_DATE_EPOCH}"
 
 mkdir -p "$OUTDIR"
 mv "$MY_TMPDIR"/root-hash.txt \
@@ -834,16 +900,8 @@ mv "$MY_TMPDIR"/root-hash.txt \
    "$MY_TMPDIR"/options.txt \
    "$MY_TMPDIR"/linux \
    "$MY_TMPDIR"/initrd \
-   "$OUTDIR"
-
-[[ -d "$MY_TMPDIR"/efi ]] && mv "$MY_TMPDIR"/efi "$OUTDIR"/efi
-
-for i in LockDown.efi Shell.efi startup.nsh; do
-    [[ -e "${BASEDIR}"/$i ]] || continue
-    cp "$i" "$OUTDIR"/efi/EFI/${NAME}/
-done
-
-chown -R "$USER" "$OUTDIR"
+   "$MY_TMPDIR"/efi \
+   "$OUTDIR"/
 
 cat > "${OUTDIR}/release.json" <<EOF
 {
@@ -854,6 +912,7 @@ cat > "${OUTDIR}/release.json" <<EOF
 }
 EOF
 
-chown "$USER" "${OUTDIR}/release.json"
+chown -R "$USER" "$OUTDIR"
+
 cp -a "${OUTDIR}/release.json" "${BASEOUTDIR}/${NAME}-latest.json"
 setenforce $OLD_SELINUX
