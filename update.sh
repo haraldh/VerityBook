@@ -158,7 +158,7 @@ trap 'exit 1;' SIGINT
 
 if [[ $USE_DIR ]]; then
     IMAGE="$USE_DIR"
-    ROOT_HASH=$(<"$IMAGE"/root-hash.txt)
+    ROOT_HASH=$(jq -r '.roothash' "$IMAGE"/release.json)
 
     if ! [[ $FORCE ]] && [[ $CURRENT_ROOT_HASH == $ROOT_HASH ]]; then
         echo "Already up2date"

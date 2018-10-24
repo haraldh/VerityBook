@@ -386,9 +386,7 @@ chroot  "$sysroot" \
 	--install /sbin/rngd \
 	--install /usr/lib/systemd/system/basic.target.wants/rngd.service \
 	--reproducible \
-	/boot/initrd
-
-#chroot  "$sysroot" bash -i
+	/lib/modules/$KVER/initrd
 
 rm "$sysroot"/pre-pivot.sh
 
@@ -788,21 +786,26 @@ echo 'C /var/mail - - - - -' >>  "$sysroot"/usr/lib/tmpfiles.d/var-quirk.conf
 
 mv "$sysroot"/lib/tmpfiles.d-var.conf "$sysroot"/lib/tmpfiles.d/var.conf
 
-mv -v "$sysroot"/boot/initrd "$MY_TMPDIR"/initrd
-
-cp "$sysroot"/lib/modules/*/vmlinuz "$MY_TMPDIR"/linux
-
 if [[ -d "$sysroot"/boot/efi/EFI/fedora ]]; then
-    mkdir -p "$MY_TMPDIR"/efi/EFI
-    mv "$sysroot"/boot/efi/EFI/fedora "$MY_TMPDIR"/efi/EFI
+    mkdir -p "$sysroot"/efi/EFI
+    mv "$sysroot"/boot/efi/EFI/fedora "$sysroot"/efi/EFI
 fi
+mkdir -p "$sysroot"/efi/EFI/${NAME}
+for i in LockDown.efi Shell.efi startup.nsh; do
+    [[ -e "${BASEDIR}"/$i ]] || continue
+    cp "$i" "$sysroot"/efi/EFI/${NAME}/
+done
+
+find "$sysroot"/efi -xdev -newermt "@${SOURCE_DATE_EPOCH}" -print0 \
+    | xargs --verbose -0 touch -h --date "@${SOURCE_DATE_EPOCH}"
+
 
 rm -fr "$sysroot"/{boot,root}
 ln -sfnr "$sysroot"/var/roothome "$sysroot"/root
 rm -fr "$sysroot"/var
 rm -fr "$sysroot"/home
 rm -f "$sysroot"/etc/yum.repos.d/*
-mkdir -p "$sysroot"/{var,home,cfg,net,efi}
+mkdir -p "$sysroot"/{var,home,cfg,net}
 
 # ------------------------------------------------------------------------------
 # SELinux relabel all the files
@@ -823,6 +826,7 @@ done
 # https://github.com/squashfskit/squashfskit
 if [[ -x "${BASEDIR}/squashfskit/squashfs-tools/mksquashfs" ]]; then
     MKSQUASHFS="${BASEDIR}/squashfskit/squashfs-tools/mksquashfs"
+#    cp "$MKSQUASHFS" "$sysroot"/usr/sbin/mksquashfs
 else
     MKSQUASHFS=mksquashfs
 fi
@@ -845,8 +849,6 @@ ROOT_HASH=$(veritysetup \
     --uuid=222722e4-58de-415b-9723-bb5dabe36034 \
     format "$MY_TMPDIR"/root.squashfs.img "$MY_TMPDIR"/root.verity.img \
     |& tail -1 | { read _ _ hash _; echo $hash; } )
-
-echo "$ROOT_HASH" > "$MY_TMPDIR"/root-hash.txt
 
 ROOT_UUID=${ROOT_HASH:32:8}-${ROOT_HASH:40:4}-${ROOT_HASH:44:4}-${ROOT_HASH:48:4}-${ROOT_HASH:52:12}
 ROOT_SIZE=$(stat --printf '%s' "$MY_TMPDIR"/root.squashfs.img)
@@ -876,32 +878,20 @@ if ! [[ $EFISTUB ]]; then
     fi
 fi
 
-mkdir -p "$MY_TMPDIR"/efi/EFI/${NAME}
+mkdir -p "$OUTDIR"
+mv "$MY_TMPDIR"/root.img \
+   "$sysroot"/efi \
+   "$OUTDIR"/
+
+
+mkdir -p "$OUTDIR"/efi/EFI/${NAME}
 objcopy \
     --add-section .release="$MY_TMPDIR"/release.txt --change-section-vma .release=0x20000 \
     --add-section .cmdline="$MY_TMPDIR"/options.txt --change-section-vma .cmdline=0x30000 \
     ${LOGO:+--add-section .splash="$LOGO" --change-section-vma .splash=0x40000} \
-    --add-section .linux="$MY_TMPDIR"/linux --change-section-vma .linux=0x2000000 \
-    --add-section .initrd="$MY_TMPDIR"/initrd --change-section-vma .initrd=0x3000000 \
-    "${EFISTUB}" "$MY_TMPDIR"/efi/EFI/${NAME}/bootx64-$ROOT_HASH.efi
-
-for i in LockDown.efi Shell.efi startup.nsh; do
-    [[ -e "${BASEDIR}"/$i ]] || continue
-    cp "$i" "$MY_TMPDIR"/efi/EFI/${NAME}/
-done
-
-find "$MY_TMPDIR"/efi -xdev -newermt "@${SOURCE_DATE_EPOCH}" -print0 \
-    | xargs --verbose -0 touch -h --date "@${SOURCE_DATE_EPOCH}"
-
-mkdir -p "$OUTDIR"
-mv "$MY_TMPDIR"/root-hash.txt \
-   "$MY_TMPDIR"/root.img \
-   "$MY_TMPDIR"/release.txt \
-   "$MY_TMPDIR"/options.txt \
-   "$MY_TMPDIR"/linux \
-   "$MY_TMPDIR"/initrd \
-   "$MY_TMPDIR"/efi \
-   "$OUTDIR"/
+    --add-section .linux="$sysroot"/lib/modules/$KVER/vmlinuz --change-section-vma .linux=0x2000000 \
+    --add-section .initrd="$sysroot"/lib/modules/$KVER/initrd --change-section-vma .initrd=0x3000000 \
+    "${EFISTUB}" "$OUTDIR"/efi/EFI/${NAME}/bootx64-$ROOT_HASH.efi
 
 cat > "${OUTDIR}/release.json" <<EOF
 {

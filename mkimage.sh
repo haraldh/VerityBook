@@ -115,8 +115,7 @@ trap '
 # clean up after ourselves no matter how we die.
 trap 'exit 1;' SIGINT
 
-ROOT_HASH=$(<"$SOURCE"/root-hash.txt)
-
+ROOT_HASH=$(jq -r '.roothash' "$SOURCE"/release.json)
 ROOT_UUID=${ROOT_HASH:32:8}-${ROOT_HASH:40:4}-${ROOT_HASH:44:4}-${ROOT_HASH:48:4}-${ROOT_HASH:52:12}
 
 # ------------------------------------------------------------------------------
