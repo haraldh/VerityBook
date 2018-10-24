@@ -77,13 +77,10 @@ All configurable files have been whitelisted and moved to /cfg.
 
 ## Create
 
-### Export your GPG Key
-
-```bash
-$ gpg2 --export --export-options export-minimal <KEYNAME> > FedoraBook.gpg
-```
-
 ### Prepare the Image
+
+For reproducible squashfs builds use https://github.com/squashfskit/squashfskit. Clone it in the 
+main FedoraBook directory and build it.
 
 ```bash
 $ sudo ./prepare-root.sh \
@@ -96,7 +93,8 @@ $ sudo ./prepare-root.sh \
 ```
 
 This will create the following files and directories:
-- ```FedoraBook``` - keep this directory around for updates (includes needed passwd/group history)
+- ```FedoraBook``` - keep this directory around for updates
+  (includes needed passwd/group history and rpmdb)
 - ```FedoraBook-29.<datetime>``` - the resulting <IMGDIR>
 - ```FedoraBook-latest.json``` - a metadata file for the update server
 
@@ -107,6 +105,8 @@ unpack and use this as ```<IMGDIR>```.
 
 Get [efitools](https://github.com/haraldh/efitools.git). Compile and create your keys.
 Copy ```LockDown.efi``` ```DB.key``` ```DB.crt``` from efitools to the fedorabook directory.
+
+Rename ```DB.key``` ```DB.crt``` to ```FedoraBook.key``` and ```FedoraBook.crt```
 
 Optionally copy ```Shell.efi``` (might be ```/usr/share/edk2/ovmf/Shell.efi```) to the fedorabook directory.
 
