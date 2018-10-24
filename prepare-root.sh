@@ -295,6 +295,7 @@ dnf -v --nogpgcheck \
     libselinux-utils \
     audit \
     dosfstools \
+    libfaketime \
     $PKGLIST
 
 RET=$?
