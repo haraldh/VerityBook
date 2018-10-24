@@ -134,6 +134,7 @@ squashfs-tools
 thunderbird
 tmux
 tree
+usbutils
 vim-enhanced
 virt-manager
 xdelta
