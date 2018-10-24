@@ -883,7 +883,7 @@ objcopy \
     ${LOGO:+--add-section .splash="$LOGO" --change-section-vma .splash=0x40000} \
     --add-section .linux="$MY_TMPDIR"/linux --change-section-vma .linux=0x2000000 \
     --add-section .initrd="$MY_TMPDIR"/initrd --change-section-vma .initrd=0x3000000 \
-    "${EFISTUB}" "$MY_TMPDIR"/efi/EFI/${NAME}/bootx64.efi
+    "${EFISTUB}" "$MY_TMPDIR"/efi/EFI/${NAME}/bootx64-$ROOT_HASH.efi
 
 for i in LockDown.efi Shell.efi startup.nsh; do
     [[ -e "${BASEDIR}"/$i ]] || continue

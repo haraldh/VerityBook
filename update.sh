@@ -234,10 +234,10 @@ if [[ ! -f /efi/EFI/Boot/bootx64.efi ]] \
     || cmp --quiet /efi/EFI/${NAME}/${OLD_ROOT_NUM}.efi /efi/EFI/Boot/bootx64.efi \
     || cmp --quiet /efi/EFI/${NAME}/_${OLD_ROOT_NUM}.efi /efi/EFI/Boot/bootx64.efi
 then
-    cp /efi/EFI/${NAME}/bootx64.efi /efi/EFI/Boot/bootx64.efi
+    cp /efi/EFI/${NAME}/bootx64-$ROOT_HASH.efi /efi/EFI/Boot/bootx64.efi
 fi
 
-cp /efi/EFI/${NAME}/bootx64.efi /efi/EFI/${NAME}/${NEW_ROOT_NUM}.efi
+cp /efi/EFI/${NAME}/bootx64-$ROOT_HASH.efi /efi/EFI/${NAME}/${NEW_ROOT_NUM}.efi
 
 if [[ -f /efi/EFI/${NAME}/${OLD_ROOT_NUM}.efi ]]; then
     mv /efi/EFI/${NAME}/${OLD_ROOT_NUM}.efi /efi/EFI/${NAME}/_${OLD_ROOT_NUM}.efi
@@ -252,5 +252,11 @@ BOOT_ORDER=${BOOT_ORDER%,}
 BOOT_ORDER=${BOOT_ORDER#,}
 
 efibootmgr -o "FED${NEW_ROOT_NUM},FED$((${OLD_ROOT_NUM}+2)),$BOOT_ORDER"
+
+for i in /efi/EFI/${NAME}/bootx64-*.efi; do
+    [[ $i == /efi/EFI/${NAME}/bootx64-$ROOT_HASH.efi ]] && continue
+    [[ $i == /efi/EFI/${NAME}/bootx64-$CURRENT_ROOT_HASH.efi ]] && continue
+    rm -f "$i"
+done
 
 echo "Update successful. Reboot your machine to use it."

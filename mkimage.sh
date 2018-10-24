@@ -175,10 +175,10 @@ if [[ $USE_EFISHELL ]]; then
     [[ -e "${SOURCE}"/efi/startup.nsh ]] && cp "${SOURCE}"/efi/startup.nsh "$MY_TMPDIR"/boot/
     [[ -e "${SOURCE}"/efi/LockDown.efi ]] && cp "${SOURCE}"/efi/LockDown.efi "$MY_TMPDIR"/boot/
     cp "${SOURCE}"/efi/Shell.efi "$MY_TMPDIR"/boot/EFI/Boot/bootx64.efi
-    cp "$SOURCE"/efi/EFI/${NAME}/bootx64.efi "$MY_TMPDIR"/boot/EFI/FedoraBook/1.efi
+    cp "$SOURCE"/efi/EFI/${NAME}/bootx64-$ROOT_HASH.efi "$MY_TMPDIR"/boot/EFI/FedoraBook/1.efi
 else
-    cp "$SOURCE"/efi/EFI/${NAME}/bootx64.efi "$MY_TMPDIR"/boot/EFI/Boot/bootx64.efi
-    cp "$SOURCE"/efi/EFI/${NAME}/bootx64.efi "$MY_TMPDIR"/boot/EFI/FedoraBook/1.efi
+    cp "$SOURCE"/efi/EFI/${NAME}/bootx64-$ROOT_HASH.efi "$MY_TMPDIR"/boot/EFI/Boot/bootx64.efi
+    cp "$SOURCE"/efi/EFI/${NAME}/bootx64-$ROOT_HASH.efi "$MY_TMPDIR"/boot/EFI/FedoraBook/1.efi
 fi
 
 umount "$MY_TMPDIR"/boot
