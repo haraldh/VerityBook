@@ -584,6 +584,10 @@ rm -f "$sysroot"/etc/machine-id
 ln -fsnr "$sysroot"/cfg/machine-id "$sysroot"/etc/machine-id
 
 #---------------
+# hwdb
+chroot "$sysroot" /usr/bin/systemd-hwdb update
+
+#---------------
 # adjtime
 mv "$sysroot"/etc/adjtime "$sysroot"/usr/share/factory/cfg/adjtime
 ln -fsnr "$sysroot"/cfg/adjtime "$sysroot"/etc/adjtime
