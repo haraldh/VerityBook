@@ -310,6 +310,8 @@ export SOURCE_DATE_EPOCH=$(
     chroot "$sysroot" bash -c 'rpm -qa --qf "%{BUILDTIME}\n"' | sort -nr | head -1
 )
 
+chroot "$sysroot" /usr/bin/systemd-sysusers
+
 for i in passwd shadow group gshadow subuid subgid; do
     [[ -e "$sysroot"/etc/${i}.rpmnew ]] || continue
     while read line || [[ $line ]]; do
