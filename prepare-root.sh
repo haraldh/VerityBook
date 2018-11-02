@@ -797,6 +797,8 @@ echo 'C /var/mail - - - - -' >>  "$sysroot"/usr/lib/tmpfiles.d/var-quirk.conf
 
 mv "$sysroot"/lib/tmpfiles.d-var.conf "$sysroot"/lib/tmpfiles.d/var.conf
 
+#---------------
+# EFI
 if [[ -d "$sysroot"/boot/efi/EFI/fedora ]]; then
     mkdir -p "$sysroot"/efi/EFI
     mv "$sysroot"/boot/efi/EFI/fedora "$sysroot"/efi/EFI
@@ -810,13 +812,16 @@ done
 find "$sysroot"/efi -xdev -newermt "@${SOURCE_DATE_EPOCH}" -print0 \
     | xargs --verbose -0 touch -h --date "@${SOURCE_DATE_EPOCH}"
 
+mv "$sysroot"/efi "$sysroot"/usr/efi
 
+#---------------
+# cleanup
 rm -fr "$sysroot"/{boot,root}
 ln -sfnr "$sysroot"/var/roothome "$sysroot"/root
 rm -fr "$sysroot"/var
 rm -fr "$sysroot"/home
 rm -f "$sysroot"/etc/yum.repos.d/*
-mkdir -p "$sysroot"/{var,home,cfg,net}
+mkdir -p "$sysroot"/{var,home,cfg,net,efi}
 
 # ------------------------------------------------------------------------------
 # SELinux relabel all the files
@@ -891,7 +896,7 @@ fi
 
 mkdir -p "$OUTDIR"
 mv "$MY_TMPDIR"/root.img \
-   "$sysroot"/efi \
+   "$sysroot"/usr/efi \
    "$OUTDIR"/
 
 
