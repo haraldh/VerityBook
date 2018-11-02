@@ -32,6 +32,7 @@ WITH_UPDATES=1
 
 TEMP=$(
     getopt -o '' \
+        --long help \
         --long pkglist: \
         --long excludelist: \
         --long outdir: \
@@ -125,6 +126,10 @@ while true; do
         '--check-update')
             CHECK_UPDATE=1
             shift 1; continue
+            ;;
+        '--help')
+	        usage
+	        exit 0
             ;;
         '--')
             shift
