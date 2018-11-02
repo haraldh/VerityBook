@@ -145,7 +145,7 @@ done
 [[ $EXCLUDELIST ]] || [[ -f excludelist.txt ]] && EXCLUDELIST=$(<excludelist.txt)
 NAME=${NAME:-"FedoraBook"}
 RELEASEVER=${RELEASEVER:-$VERSION_ID}
-BASEOUTDIR=${BASEOUTDIR:-"$CURDIR"}
+BASEOUTDIR=$(realpath ${BASEOUTDIR:-"$CURDIR"})
 CRT=${CRT:-${NAME}.crt}
 REPOSD=${REPOSD:-/etc/yum.repos.d}
 STATEDIR=${STATEDIR:-"${BASEDIR}/${NAME}"}
