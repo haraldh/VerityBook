@@ -114,6 +114,7 @@ nautilus
 nfs-utils
 nss-mdns
 nss-tools
+opensc
 openssh-server
 pam-devel
 pam_yubico
