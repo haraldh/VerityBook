@@ -149,6 +149,7 @@ BASEOUTDIR=$(realpath ${BASEOUTDIR:-"$CURDIR"})
 CRT=${CRT:-${NAME}.crt}
 REPOSD=${REPOSD:-/etc/yum.repos.d}
 STATEDIR=${STATEDIR:-"${BASEDIR}/${NAME}"}
+export SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH:-$(date -u +'%s')}
 
 readonly OLD_SELINUX=$(getenforce)
 
@@ -303,12 +304,6 @@ RET=$?
 if [[ $CHECK_UPDATE ]]; then
     exit $RET
 fi
-
-# ------------------------------------------------------------------------------
-# Record timestamp of last built package date
-export SOURCE_DATE_EPOCH=$(
-    chroot "$sysroot" bash -c 'rpm -qa --qf "%{BUILDTIME}\n"' | sort -nr | head -1
-)
 
 chroot "$sysroot" /usr/bin/systemd-sysusers
 
