@@ -29,6 +29,9 @@ bind-utils
 bzip2-devel
 ca-certificates
 cryptsetup-devel
+cups
+cups-client
+cups-ipptool
 dbus-devel
 dnf
 docbook-dtds

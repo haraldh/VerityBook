@@ -521,6 +521,16 @@ EOF
 fi
 
 #---------------
+# cups
+if [[ -d "$sysroot"/etc/cups ]]; then
+    mv "$sysroot"/etc/cups "$sysroot"/usr/share/factory/cfg/cups
+    ln -sfnr "$sysroot"/cfg/cups "$sysroot"/etc/cups
+    cat >> "$sysroot"/usr/lib/tmpfiles.d/cups.conf <<EOF
+C /cfg/cups - - - - -
+EOF
+fi
+
+#---------------
 # NetworkManager
 if [[ -d "$sysroot"/etc/NetworkManager ]]; then
     mv "$sysroot"/etc/NetworkManager "$sysroot"/usr/share/factory/cfg/
