@@ -899,6 +899,7 @@ if ! [[ $EFISTUB ]]; then
     fi
 fi
 
+[[ -e "$OUTDIR" ]] && rm -fr "$OUTDIR"
 mkdir -p "$OUTDIR"
 mv "$MY_TMPDIR"/root.img \
    "$sysroot"/usr/efi \
