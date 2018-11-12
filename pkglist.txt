@@ -83,6 +83,7 @@ iwl6000g2a-firmware
 iwl6000g2b-firmware
 iwl6050-firmware
 iwl7260-firmware
+java
 kmod-devel
 libacl-devel
 libblkid-devel
@@ -114,6 +115,7 @@ meson
 midisport-firmware
 mosh
 nautilus
+net-tools
 nfs-utils
 nss-mdns
 nss-tools
