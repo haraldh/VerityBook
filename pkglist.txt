@@ -134,7 +134,6 @@ python3-wheel
 qrencode-devel
 rpcbind
 rsync
-sbsigntools
 screen
 squashfs-tools
 thunderbird

@@ -297,6 +297,7 @@ dnf -v --nogpgcheck \
     audit \
     dosfstools \
     libfaketime \
+    sbsigntools \
     $PKGLIST
 
 RET=$?
