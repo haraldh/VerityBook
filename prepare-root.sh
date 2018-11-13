@@ -324,7 +324,11 @@ find "$sysroot" -name '*.rpmnew' -print0 | xargs -0 rm -fv
 mkdir -p "${STATEDIR}"
 for i in passwd shadow group gshadow subuid subgid; do
     cp "$sysroot"/etc/"$i" "${STATEDIR}"
-    chown "$USER" "${STATEDIR}/$i"
+    if [[ "$SUDO_USER" ]]; then
+        chown "$SUDO_USER" "${STATEDIR}/$i"
+    else
+        chown "$USER" "${STATEDIR}/$i"
+    fi
     chmod u+r "${STATEDIR}/$i"
 done
 
