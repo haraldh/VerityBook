@@ -10,7 +10,7 @@ Creates a directory with a readonly root on squashfs, a dm_verity file and an EF
   --pkglist FILE     The packages to install read from FILE (default: pkglist.txt)
   --excludelist FILE The packages to install read from FILE (default: excludelist.txt)
   --releasever NUM   Used Fedora release version NUM (default: $VERSION_ID)
-  --outdir DIR       Creates DIR and puts all files in there (default: NAME-NUM-DATE)
+  --outname JSON     Creates \$JSON.json symlinked to that release (default: NAME-NUM-DATE)
   --baseoutdir DIR   Parent directory of --outdir
   --name NAME        The NAME of the product (default: FedoraBook)
   --logo FILE        Uses the .bmp FILE to display as a splash screen (default: logo.bmp)
@@ -35,7 +35,7 @@ TEMP=$(
         --long help \
         --long pkglist: \
         --long excludelist: \
-        --long outdir: \
+        --long outname: \
         --long baseoutdir: \
         --long name: \
         --long releasever: \
@@ -79,8 +79,8 @@ while true; do
             fi
             shift 2; continue
             ;;
-        '--outdir')
-            OUTDIR="$2"
+        '--outname')
+            OUTNAME="$2"
             shift 2; continue
             ;;
         '--baseoutdir')
@@ -173,7 +173,7 @@ trap '
        [[ -d "$i" ]] && mountpoint -q "$i" && umount "$i"
     done
     [[ $MY_TMPDIR ]] && rm -rf --one-file-system -- "$MY_TMPDIR"
-    (( $ret != 0 )) && [[ "$OUTDIR" ]] && rm -rf --one-file-system -- "$OUTDIR"
+    (( $ret != 0 )) && [[ "$OUTNAME" ]] && rm -rf --one-file-system -- "$OUTNAME"
     setenforce $OLD_SELINUX
     exit $ret;
     ' EXIT
@@ -858,8 +858,8 @@ else
 fi
 
 VERSION_ID="${RELEASEVER}.$(date -u +'%Y%m%d%H%M%S' --date @$SOURCE_DATE_EPOCH)"
-OUTDIR=${OUTDIR:-"${NAME}-${VERSION_ID}"}
-OUTDIR="${BASEOUTDIR}/${OUTDIR}"
+OUTNAME=${OUTNAME:-"${NAME}-${VERSION_ID}"}
+OUTNAME="${BASEOUTDIR}/${OUTNAME}"
 
 if [[ -f "$sysroot"/etc/os-release ]]; then
     sed -i -e "s#VERSION_ID=.*#VERSION_ID=$VERSION_ID#" "$sysroot"/etc/os-release
@@ -904,32 +904,33 @@ if ! [[ $EFISTUB ]]; then
     fi
 fi
 
-[[ -e "$OUTDIR" ]] && rm -fr "$OUTDIR"
-mkdir -p "$OUTDIR"
-mv "$MY_TMPDIR"/root.img \
-   "$sysroot"/usr/efi \
-   "$OUTDIR"/
-
-
-mkdir -p "$OUTDIR"/efi/EFI/${NAME}
+mkdir -p "$sysroot"/usr/efi/EFI/${NAME}
 objcopy \
     --add-section .release="$MY_TMPDIR"/release.txt --change-section-vma .release=0x20000 \
     --add-section .cmdline="$MY_TMPDIR"/options.txt --change-section-vma .cmdline=0x30000 \
     ${LOGO:+--add-section .splash="$LOGO" --change-section-vma .splash=0x40000} \
     --add-section .linux="$sysroot"/lib/modules/$KVER/vmlinuz --change-section-vma .linux=0x2000000 \
     --add-section .initrd="$sysroot"/lib/modules/$KVER/initrd --change-section-vma .initrd=0x3000000 \
-    "${EFISTUB}" "$OUTDIR"/efi/EFI/${NAME}/bootx64-$ROOT_HASH.efi
+    "${EFISTUB}" "$sysroot"/usr/efi/EFI/${NAME}/bootx64-$ROOT_HASH.efi
 
-cat > "${OUTDIR}/release.json" <<EOF
+tar cf - -C "$sysroot"/usr efi | pigz -c > "${BASEOUTDIR}/${NAME}-${ROOT_HASH}-efi.tgz"
+mv "$MY_TMPDIR"/root.img "${BASEOUTDIR}/${NAME}-${ROOT_HASH}.img"
+
+cat > "${OUTNAME}.json" <<EOF
 {
-        "roothash": "$ROOT_HASH",
-        "rootsize": "$ROOT_SIZE",
+        "roothash": "${ROOT_HASH}",
+        "imagesize": "${IMAGE_SIZE}",
         "name"    : "${NAME}",
         "version" : "${VERSION_ID}"
 }
 EOF
 
-chown -R "$USER" "$OUTDIR"
+ln -sfnr "${OUTNAME}.json" "${BASEOUTDIR}/${NAME}-latest.json"
 
-cp -a "${OUTDIR}/release.json" "${BASEOUTDIR}/${NAME}-latest.json"
+chown "${SUDO_USER:-$USER}" \
+    "${OUTNAME}.json" \
+    "${BASEOUTDIR}/${NAME}-${ROOT_HASH}.img" \
+    "${BASEOUTDIR}/${NAME}-${ROOT_HASH}-efi.tgz" \
+    "${BASEOUTDIR}/${NAME}-latest.json"
+
 setenforce $OLD_SELINUX

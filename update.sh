@@ -9,18 +9,14 @@ Usage: $PROGNAME [OPTION]
 
   -h, --help             Display this help
   --force                Update, even if the signature checks fail
-  --dir DIR              Update from DIR, instead of downloading
-  --nocheck              Do not check the integrity of the update data
-  --nodownload           Use the existing *.json file in the current directory
+  --json JSON            Update from JSON, instead of downloading
 EOF
 }
 
 TEMP=$(
     getopt -o '' \
-        --long dir: \
+        --long json: \
         --long force \
-        --long nocheck \
-        --long nodownload \
         --long help \
         -- "$@"
     )
@@ -35,20 +31,12 @@ unset TEMP
 
 while true; do
     case "$1" in
-        '--dir')
-	        USE_DIR="$(readlink -e $2)"
+        '--json')
+	        USE_JSON="$(readlink -e $2)"
             shift 2; continue
             ;;
         '--force')
 	        FORCE="y"
-            shift 1; continue
-            ;;
-        '--nocheck')
-	        NO_CHECK="y"
-            shift 1; continue
-            ;;
-        '--nodownload')
-	        NO_DOWNLOAD="y"
             shift 1; continue
             ;;
         '--help')
@@ -73,6 +61,10 @@ BASEURL="$1"
 CURRENT_ROOT_HASH=$(</proc/cmdline)
 CURRENT_ROOT_HASH=${CURRENT_ROOT_HASH#*roothash=}
 CURRENT_ROOT_HASH=${CURRENT_ROOT_HASH%% *}
+
+CURRENT_IMAGE_SIZE=$(</proc/cmdline)
+CURRENT_IMAGE_SIZE=${CURRENT_IMAGE_SIZE#*verity.imagesize=}
+CURRENT_IMAGE_SIZE=${CURRENT_IMAGE_SIZE%% *}
 
 CURRENT_ROOT_UUID=${CURRENT_ROOT_HASH:32:8}-${CURRENT_ROOT_HASH:40:4}-${CURRENT_ROOT_HASH:44:4}-${CURRENT_ROOT_HASH:48:4}-${CURRENT_ROOT_HASH:52:12}
 
@@ -155,76 +147,143 @@ trap '
 # clean up after ourselves no matter how we die.
 trap 'exit 1;' SIGINT
 
+download_latest_json() {
+    JSON="${NAME}-latest.json"
+    rm -f "/var/cache/${NAME}/${JSON}"
+    curl "${BASEURL}/${JSON}" --output /var/cache/${NAME}/${JSON}
+    ROOT_HASH="$(jq -r '.roothash' /var/cache/${NAME}/${JSON})"
+    VERSION="$(jq -r '.version' /var/cache/${NAME}/${JSON})"
+    mv "/var/cache/${NAME}/${JSON}" "/var/cache/${NAME}/${NAME}-${VERSION}.json"
+    JSON="/var/cache/${NAME}/${NAME}-${VERSION}.json"
 
-if [[ $USE_DIR ]]; then
-    IMAGE="$USE_DIR"
-    ROOT_HASH=$(jq -r '.roothash' "$IMAGE"/release.json)
+    curl "${BASEURL}/${NAME}-${VERSION}.json.sig" \
+        --output /var/cache/${NAME}/${NAME}-${VERSION}.json.sig
 
-    if ! [[ $FORCE ]] && [[ $CURRENT_ROOT_HASH == $ROOT_HASH ]]; then
-        echo "Already up2date"
-        exit 1
+    if ! openssl dgst -sha256 -verify /etc/pki/${NAME}/pubkey \
+        -signature /var/cache/${NAME}/${NAME}-${VERSION}.json.sig \
+        "/var/cache/${NAME}/${NAME}-${VERSION}.json"
+    then
+        rm -f "/var/cache/${NAME}/${NAME}-${VERSION}.json" \
+            "/var/cache/${NAME}/${NAME}-${VERSION}.json.sig"
+        return 1
     fi
+    return 0
+}
+
+
+if [[ $USE_JSON ]]; then
+    JSON="${USE_JSON}"
 else
-    if ! [[ $NO_DOWNLOAD ]]; then
-        cd "$MY_TMPDIR"
-        JSON="${NAME}-latest.json"
-        curl ${BASEURL}/${JSON} --output ${JSON}
+    download_latest_json
+fi
+
+cd $MY_TMPDIR
+
+JSONDIR="${JSON%/*}"
+ROOT_HASH="$(jq -r '.roothash' ${JSON})"
+IMAGE_SIZE="$(jq -r '.imagesize' ${JSON})"
+
+if ! [[ $FORCE ]] && ( \
+        [[ $CURRENT_ROOT_HASH == $ROOT_HASH ]] \
+        || [[ -f /efi/EFI/${NAME}/bootx64-XXX-$ROOT_HASH.efi ]]
+        )
+then
+    echo "Already up2date"
+    exit 0
+fi
+
+check_delta_size() {
+    local HASH="$1"
+    local TARGET_HASH="$2"
+    local SIZE NEW_HASH JSON NEW_SIZE
+    curl -s "${BASEURL}/${NAME}-${HASH}-delta.json" \
+        --output /var/cache/${NAME}/${NAME}-${HASH}-delta.json \
+        || return -1
+    curl -s "${BASEURL}/${NAME}-${HASH}-delta.json.sig" \
+        --output /var/cache/${NAME}/${NAME}-${HASH}-delta.json.sig \
+        || return -1
+    openssl dgst -sha256 -verify /etc/pki/${NAME}/pubkey \
+        -signature /var/cache/${NAME}/${NAME}-${HASH}-delta.json.sig \
+        /var/cache/${NAME}/${NAME}-${HASH}-delta.json \
+        &>/dev/null || return -1
+    JSON="/var/cache/${NAME}/${NAME}-${HASH}-delta.json"
+    SIZE="$(jq -r '.deltasize' $JSON)"
+    NEW_HASH="$(jq -r '.roothash' ${JSON})"
+    if [[ $NEW_HASH != $TARGET_HASH ]]; then
+        NEW_SIZE=$(check_delta_size "$NEW_HASH" "$TARGET_HASH")
+        [[ $? == -1 ]] && return -1
+        SIZE=$(($SIZE + $NEW_SIZE))
+    fi
+    echo $SIZE
+    return 0
+}
+
+download_delta_images() {
+    local HASH="$1"
+    local TARGET_HASH="$2"
+    local SIZE NEW_HASH NEW_SIZE
+    local JSON="/var/cache/${NAME}/${NAME}-${HASH}-delta.json"
+    curl -s "${BASEURL}/${NAME}-${HASH}-delta.img" \
+        --output /var/cache/${NAME}/${NAME}-${HASH}-delta.img \
+        || return -1
+
+    jq -r '.deltasig' ${JSON} | xxd -r -p > "$MY_TMPDIR/deltasig"
+
+    openssl dgst -sha256 -verify /etc/pki/${NAME}/pubkey \
+        -signature "$MY_TMPDIR/deltasig" \
+        /var/cache/${NAME}/${NAME}-${HASH}-delta.img \
+        &>/dev/null || return -1
+
+    NEW_HASH="$(jq -r '.roothash' ${JSON})"
+    if [[ $NEW_HASH != $TARGET_HASH ]]; then
+        xdelta3 -c -d -s /dev/stdin /var/cache/${NAME}/${NAME}-${HASH}-delta.img \
+            | download_delta_images "$NEW_HASH" "$TARGET_HASH"
     else
-        JSON="$(realpath $1)"
-        cd ${JSON%/*}
+        xdelta3 -c -d -s /dev/stdin /var/cache/${NAME}/${NAME}-${HASH}-delta.img
     fi
+}
 
-    IMAGE="$(jq -r '.name' ${JSON})-$(jq -r '.version' ${JSON})"
-    ROOT_HASH=$(jq -r '.roothash' ${JSON})
-
-    if ! [[ $FORCE ]] && [[ $CURRENT_ROOT_HASH == $ROOT_HASH ]]; then
-        echo "Already up2date"
-        exit 1
-    fi
-
-    if ! [[ $NO_DOWNLOAD ]]; then
-        [[ -d ${IMAGE} ]] || curl ${BASEURL}/${IMAGE}.tgz | tar xzf -
-    fi
+if SIZE=$(check_delta_size "$CURRENT_ROOT_HASH" "$ROOT_HASH") && (($SIZE < $IMAGE_SIZE))
+then
+    dd if=$CURRENT_ROOT_DEV bs=4096 count=$(($CURRENT_IMAGE_SIZE/4096)) \
+    | download_delta_images "$CURRENT_ROOT_HASH" "$ROOT_HASH" \
+    | dd bs=4096 conv=fsync status=progress \
+        of=${ROOT_DEV}-part${NEW_ROOT_PARTNO}
+else
+    curl -C - "${BASEURL}/${NAME}-${ROOT_HASH}.img" \
+    | dd bs=4096 conv=fsync status=progress \
+        of=${ROOT_DEV}-part${NEW_ROOT_PARTNO}
 fi
 
-[[ -d ${IMAGE} ]]
+jq -r '.rootimgsig' ${JSON} | xxd -r -p > "$MY_TMPDIR/rootimgsig"
 
-cd ${IMAGE}
-
-unset FILES; declare -A FILES
-while read _ file || [[ $file ]]; do
-    FILES["$file"]="1"
-done < sha512sum.txt
-
-if ! [[ $NO_CHECK ]]; then
-    # check integrity
-    openssl dgst -sha256 -verify "$sysroot"/etc/pki/${NAME}/pubkey \
-        -signature sha512sum.txt.sig sha512sum.txt
-    sha512sum --strict -c sha512sum.txt
-    for i in $(find . -type f); do
-        [[ $i == ./sha512sum.txt ]] && continue
-        [[ $i == ./sha512sum.txt.sig ]] && continue
-        if ! [[ ${FILES["$i"]} ]]; then
-            echo "File $i not signed"
-            exit 1
-        fi
-    done
+if ! dd bs=4096 \
+        if=${ROOT_DEV}-part${NEW_ROOT_PARTNO} \
+        count=$(($IMAGE_SIZE/4096)) \
+        | openssl dgst -sha256 -verify /etc/pki/${NAME}/pubkey \
+            -signature "$MY_TMPDIR/rootimgsig" /dev/stdin;
+then
+    exit 1
 fi
-
-if [[ ${FILES["update.sh"]} ]] && [[ -e ./update.sh ]]; then
- . ./update.sh
- exit $?
-fi
-
-dd bs=4096 conv=fsync status=progress \
-    if=root.img \
-    of=${ROOT_DEV}-part${NEW_ROOT_PARTNO}
 
 # set the new partition uuids
 ROOT_UUID=${ROOT_HASH:32:8}-${ROOT_HASH:40:4}-${ROOT_HASH:44:4}-${ROOT_HASH:48:4}-${ROOT_HASH:52:12}
 
 sfdisk --part-uuid ${ROOT_DEV} ${NEW_ROOT_PARTNO} ${ROOT_UUID}
 
+jq -r '.efitarsig' ${JSON} | xxd -r -p > "$MY_TMPDIR/efitarsig"
+
+curl -C - "${BASEURL}/${NAME}-${ROOT_HASH}-efi.tgz" \
+    --output "/var/cache/${NAME}/${NAME}-${ROOT_HASH}-efi.tgz"
+
+if ! openssl dgst -sha256 -verify /etc/pki/${NAME}/pubkey \
+    -signature "$MY_TMPDIR/efitarsig" "${JSONDIR}/${NAME}-${ROOT_HASH}-efi.tgz";
+    then
+    rm -f "${JSONDIR}/${NAME}-${ROOT_HASH}-efi.tgz"
+    exit 1
+fi
+
+tar xzf "${JSONDIR}/${NAME}-${ROOT_HASH}-efi.tgz"
 # install to /efi
 if [[ -d efi/EFI ]]; then
     cp -vr efi/EFI/* /efi/EFI/
