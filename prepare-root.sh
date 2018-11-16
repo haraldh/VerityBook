@@ -244,6 +244,7 @@ if [[ $NO_SCRIPTS ]]; then
     ln -s ../run/lock "$sysroot"/var/lock
 fi
 
+set +e
 dnf -v --nogpgcheck \
     --installroot "$sysroot"/ \
     --releasever "$RELEASEVER" \
@@ -301,10 +302,13 @@ dnf -v --nogpgcheck \
     $PKGLIST
 
 RET=$?
+set -e
 
 if [[ $CHECK_UPDATE ]]; then
     exit $RET
 fi
+
+(( $RET == 0 ))
 
 chroot "$sysroot" /usr/bin/systemd-sysusers
 
