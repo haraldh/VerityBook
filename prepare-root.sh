@@ -212,7 +212,7 @@ if [[ $CHECK_UPDATE ]]; then
     mkdir -p "$STATEDIR"/rpm
     mkdir -p "$sysroot"/var/lib/rpm
     mount -o bind "$STATEDIR"/rpm "$sysroot"/var/lib/rpm
-    DNF_COMMAND="check-update"
+    DNF_COMMAND="check-update --refresh"
 else
     DNF_COMMAND="install -y"
 fi
