@@ -151,8 +151,6 @@ REPOSD=${REPOSD:-/etc/yum.repos.d}
 STATEDIR=${STATEDIR:-"${BASEDIR}/${NAME}"}
 export SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH:-$(date -u +'%s')}
 
-readonly OLD_SELINUX=$(getenforce)
-
 [[ $TMPDIR ]] || TMPDIR=/var/tmp
 readonly TMPDIR="$(realpath -e "$TMPDIR")"
 [ -d "$TMPDIR" ] || {
@@ -169,19 +167,16 @@ readonly MY_TMPDIR="$(mktemp -p "$TMPDIR/" -d -t ${PROGNAME}.XXXXXX)"
 # clean up after ourselves no matter how we die.
 trap '
     ret=$?;
-    for i in "$sysroot"/{dev,sys/fs/selinux,sys,proc,run,var/lib/rpm,var/cache/dnf}; do
+    for i in "$sysroot"/{dev,sys,proc,run,var/lib/rpm,var/cache/dnf}; do
        [[ -d "$i" ]] && mountpoint -q "$i" && umount "$i"
     done
     [[ $MY_TMPDIR ]] && rm -rf --one-file-system -- "$MY_TMPDIR"
     (( $ret != 0 )) && [[ "$OUTNAME" ]] && rm -rf --one-file-system -- "$OUTNAME"
-    setenforce $OLD_SELINUX
     exit $ret;
     ' EXIT
 
 # clean up after ourselves no matter how we die.
 trap 'exit 1;' SIGINT
-
-setenforce 0
 
 readonly sysroot="${MY_TMPDIR}/sysroot"
 
@@ -336,18 +331,13 @@ for i in passwd shadow group gshadow subuid subgid; do
     chmod u+r "${STATEDIR}/$i"
 done
 
-# ------------------------------------------------------------------------------
-# selinux
-#sed -i -e 's#^SELINUX=.*#SELINUX=permissive#g' "$sysroot"/etc/selinux/config
-mount -t selinuxfs none "$sysroot/sys/fs/selinux"
-chroot "$sysroot" semanage fcontext --noreload -a -e /etc /cfg
 cp "$CURDIR"/FedoraBook.te "$CURDIR"/FedoraBook.fc "$sysroot"/var/tmp
 chroot "$sysroot" bash -c '
     cd /var/tmp
     make -f  /usr/share/selinux/devel/Makefile
     semodule --noreload -i FedoraBook.pp
 '
-umount "$sysroot/sys/fs/selinux"
+chroot "$sysroot" semanage fcontext --noreload -a -e /etc /cfg
 
 cp "$CURDIR/clonedisk.sh" "$sysroot"/usr/bin/fedorabook-clonedisk
 cp "$CURDIR/update.sh" "$sysroot"/usr/bin/fedorabook-update
@@ -839,14 +829,12 @@ mkdir -p "$sysroot"/{var,home,cfg,net,efi}
 
 # ------------------------------------------------------------------------------
 # SELinux relabel all the files
-mount -t selinuxfs none "$sysroot/sys/fs/selinux"
-chroot "$sysroot" restorecon -m -v -F -R /usr /etc
-chroot "$sysroot" restorecon -m -v -F /cfg /efi /home /var /net /root
-umount "$sysroot/sys/fs/selinux"
+chroot "$sysroot" setfiles -v -F \
+    /etc/selinux/targeted/contexts/files/file_contexts /
 
 # ------------------------------------------------------------------------------
 # umount everything
-for i in "$sysroot"/{dev,sys/fs/selinux,sys,proc,run}; do
+for i in "$sysroot"/{dev,sys,proc,run}; do
     [[ -d "$i" ]] && mountpoint -q "$i" && umount "$i"
 done
 
@@ -937,4 +925,3 @@ chown "${SUDO_USER:-$USER}" \
     "${BASEOUTDIR}/${NAME}-${ROOT_HASH}-efi.tgz" \
     "${BASEOUTDIR}/${NAME}-latest.json"
 
-setenforce $OLD_SELINUX
