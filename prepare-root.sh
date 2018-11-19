@@ -206,7 +206,7 @@ if [[ $CHECK_UPDATE ]]; then
     mkdir -p "$STATEDIR"/rpm
     mkdir -p "$sysroot"/var/lib/rpm
     mount -o bind "$STATEDIR"/rpm "$sysroot"/var/lib/rpm
-    DNF_COMMAND="check-update"
+    DNF_COMMAND="check-update --refresh"
 else
     DNF_COMMAND="install -y"
 fi
@@ -554,6 +554,15 @@ if [[ -d "$sysroot"/etc/libvirt ]]; then
 C /cfg/libvirt - - - - -
 EOF
 fi
+
+#---------------
+# usr/local
+mkdir -p "$sysroot"/usr/share/factory/usr/
+mv "$sysroot"/usr/local "$sysroot"/usr/share/factory/usr/local
+mkdir -p "$sysroot"/usr/local
+cat >> "$sysroot"/usr/lib/tmpfiles.d/usrlocal.conf <<EOF
+C /usr/local - - - - -
+EOF
 
 #---------------
 # brlapi

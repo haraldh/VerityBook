@@ -54,6 +54,8 @@ geolite2-city
 geolite2-country
 gettext
 git
+gtk3-devel
+glib2-devel
 gnome-initial-setup
 gnome-remote-desktop
 gnu-efi
