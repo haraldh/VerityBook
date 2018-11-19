@@ -142,7 +142,6 @@ while true; do
     esac
 done
 
-[[ $EXCLUDELIST ]] || [[ -f excludelist.txt ]] && EXCLUDELIST=$(<excludelist.txt)
 NAME=${NAME:-"FedoraBook"}
 RELEASEVER=${RELEASEVER:-$VERSION_ID}
 BASEOUTDIR=$(realpath ${BASEOUTDIR:-"$CURDIR"})
