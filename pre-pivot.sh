@@ -126,29 +126,24 @@ mount -o bind /run/initramfs/mnt/cfg /sysroot/cfg
 umount -l /run/initramfs/mnt &>/dev/null
 
 if [[ $FIRST_TIME ]]; then
-    mount -o bind /sys /sysroot/sys
-    mount -t selinuxfs none /sysroot/sys/fs/selinux
     chroot /sysroot bash -c '
-/usr/sbin/load_policy -i
-/sbin/restorecon -m -F -v /cfg /var /home
+for i in /var /home /cfg /usr/local; do
+    mountpoint -q "$i" || continue
+    /usr/sbin/setfiles -v -F \
+        /etc/selinux/targeted/contexts/files/file_contexts $i
+done
 '
-    umount /sysroot/sys/fs/selinux
-    umount /sysroot/sys
 fi
 
 if [[ $RELABEL ]]; then
-    mount -o bind /sys /sysroot/sys
-    mount -t selinuxfs none /sysroot/sys/fs/selinux
     chroot /sysroot bash -c '
-/usr/sbin/load_policy -i
 for i in var home cfg; do
     [[ -e /$i/.autorelabel ]] || continue
     rm -f /$i/.autorelabel
-    /sbin/restorecon -m -F -v -R /$i
+    /usr/sbin/setfiles -v -F \
+        /etc/selinux/targeted/contexts/files/file_contexts /$i
 done
 ' 2>&1 | vwarn
-    umount /sysroot/sys/fs/selinux
-    umount /sysroot/sys
 fi
 
 :
