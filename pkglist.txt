@@ -137,7 +137,6 @@ qrencode-devel
 rpcbind
 rsync
 screen
-squashfs-tools
 thunderbird
 tmux
 tree

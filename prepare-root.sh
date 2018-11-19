@@ -293,6 +293,7 @@ dnf -v --nogpgcheck \
     dosfstools \
     libfaketime \
     sbsigntools \
+    squashfs-tools \
     $PKGLIST
 
 RET=$?
