@@ -561,7 +561,16 @@ mkdir -p "$sysroot"/usr/share/factory/usr/
 mv "$sysroot"/usr/local "$sysroot"/usr/share/factory/usr/local
 mkdir -p "$sysroot"/usr/local
 cat >> "$sysroot"/usr/lib/tmpfiles.d/usrlocal.conf <<EOF
-C /usr/local - - - - -
+C /usr/local/bin - - - - -
+C /usr/local/etc - - - - -
+C /usr/local/games - - - - -
+C /usr/local/include - - - - -
+C /usr/local/lib - - - - -
+C /usr/local/lib64 - - - - -
+C /usr/local/libexec - - - - -
+C /usr/local/sbin - - - - -
+C /usr/local/share - - - - -
+C /usr/local/src - - - - -
 EOF
 
 #---------------
