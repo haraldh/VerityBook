@@ -120,6 +120,7 @@ for i in var home cfg; do
     fi
 done
 
+[ -d /run/initramfs/mnt/local ] && mount -o bind /run/initramfs/mnt/local /sysroot/usr/local
 mount -o bind /run/initramfs/mnt/var /sysroot/var
 mount -o bind /run/initramfs/mnt/home /sysroot/home
 mount -o bind /run/initramfs/mnt/cfg /sysroot/cfg

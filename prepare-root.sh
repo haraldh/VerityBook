@@ -567,6 +567,15 @@ EOF
 fi
 
 #---------------
+# usr/local
+mkdir -p "$sysroot"/usr/share/factory/usr/
+mv "$sysroot"/usr/local "$sysroot"/usr/share/factory/usr/local
+mkdir -p "$sysroot"/usr/local
+cat >> "$sysroot"/usr/lib/tmpfiles.d/usrlocal.conf <<EOF
+C /usr/local - - - - -
+EOF
+
+#---------------
 # brlapi
 # FIXME: reproducible
 echo 80e770bbff7c881ab84284f58384b0a7 > "$sysroot"/etc/brlapi.key
