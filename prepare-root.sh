@@ -667,11 +667,12 @@ for i in "$sysroot"/usr/share/fonts/*; do
         | { read h _ ; echo ${h:32:8}-${h:40:4}-${h:44:4}-${h:48:4}-${h:52:12}; } \
         > "$i"/.uuid
 done
-cat "$sysroot"/usr/share/fonts/*/.uuid \
-    | sha256sum \
-    | { read h _ ; echo ${h:32:8}-${h:40:4}-${h:44:4}-${h:48:4}-${h:52:12}; } \
-    > "$sysroot"/usr/share/fonts/.uuid
-
+if [[ "$sysroot"/usr/share/fonts/*/.uuid != "$sysroot"/usr/share/fonts/\*/.uuid ]]; then
+    cat "$sysroot"/usr/share/fonts/*/.uuid \
+        | sha256sum \
+        | { read h _ ; echo ${h:32:8}-${h:40:4}-${h:44:4}-${h:48:4}-${h:52:12}; } \
+        > "$sysroot"/usr/share/fonts/.uuid
+fi
 #---------------
 # udev dri/card0
 cp "${BASEDIR}"/systemd-udev-settle-dri.service "$sysroot"/usr/lib/systemd/system/
