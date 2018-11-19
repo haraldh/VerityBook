@@ -25,7 +25,6 @@ EOF
 }
 
 CURDIR=$(pwd)
-
 PROGNAME=${0##*/}
 BASEDIR=${0%/*}
 WITH_UPDATES=1
@@ -331,7 +330,7 @@ for i in passwd shadow group gshadow subuid subgid; do
     chmod u+r "${STATEDIR}/$i"
 done
 
-cp "$CURDIR"/FedoraBook.te "$CURDIR"/FedoraBook.fc "$sysroot"/var/tmp
+cp "$BASEDIR"/FedoraBook.te "$BASEDIR"/FedoraBook.fc "$sysroot"/var/tmp
 chroot "$sysroot" bash -c '
     cd /var/tmp
     make -f  /usr/share/selinux/devel/Makefile
@@ -339,13 +338,13 @@ chroot "$sysroot" bash -c '
 '
 chroot "$sysroot" semanage fcontext --noreload -a -e /etc /cfg
 
-cp "$CURDIR/clonedisk.sh" "$sysroot"/usr/bin/fedorabook-clonedisk
-cp "$CURDIR/update.sh" "$sysroot"/usr/bin/fedorabook-update
-cp "$CURDIR/mkimage.sh" "$sysroot"/usr/bin/fedorabook-mkimage
+cp "$BASEDIR/clonedisk.sh" "$sysroot"/usr/bin/fedorabook-clonedisk
+cp "$BASEDIR/update.sh" "$sysroot"/usr/bin/fedorabook-update
+cp "$BASEDIR/mkimage.sh" "$sysroot"/usr/bin/fedorabook-mkimage
 
 mkdir -p "$sysroot"/etc/pki/${NAME}
-openssl x509 -in "${CURDIR}/${CRT}" -pubkey -noout > "$sysroot"/etc/pki/${NAME}/pubkey
-cp "${CURDIR}/${CRT}" "$sysroot"/etc/pki/${NAME}/crt
+openssl x509 -in "${BASEDIR}/${CRT}" -pubkey -noout > "$sysroot"/etc/pki/${NAME}/pubkey
+cp "${BASEDIR}/${CRT}" "$sysroot"/etc/pki/${NAME}/crt
 
 rpm --root "$sysroot" -qa | sort > "$sysroot"/usr/rpm-list.txt
 
@@ -829,7 +828,7 @@ fi
 mkdir -p "$sysroot"/efi/EFI/${NAME}
 for i in LockDown.efi Shell.efi startup.nsh; do
     [[ -e "${BASEDIR}"/$i ]] || continue
-    cp "$i" "$sysroot"/efi/EFI/${NAME}/
+    cp "${BASEDIR}"/$i "$sysroot"/efi/EFI/${NAME}/
 done
 
 find "$sysroot"/efi -xdev -newermt "@${SOURCE_DATE_EPOCH}" -print0 \
