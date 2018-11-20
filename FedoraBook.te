@@ -1,71 +1,81 @@
-
 module FedoraBook 1.0;
 
 require {
-	type accountsd_t;
-    type auditd_t;
+	type system_dbusd_var_run_t;
+	type iscsi_unit_file_t;
+	type etc_t;
+	type systemd_timedated_t;
+	type var_t;
+	type NetworkManager_t;
+	type systemd_networkd_var_run_t;
 	type default_t;
-	type geoclue_t;
-	type geoclue_tmp_t;
-	type init_t;
-	type init_exec_t;
-	type init_var_run_t;
 	type lib_t;
 	type machineid_t;
-	type security_t;
-	type semanage_store_t;
-	type shadow_t;
-	type system_dbusd_t;
-	type system_dbusd_var_run_t;
-	type systemd_gpt_generator_t;
-	type systemd_tmpfiles_t;
-	type unconfined_t;
-	type unlabeled_t;
-	type useradd_t;
-	type var_lib_t;
-	type var_run_t;
+	type avahi_t;
 	type xdm_t;
-	class dir { add_name write read setattr };
-	class file { execute getattr setattr map read open relabelto write create };
-	class sock_file { read };
-	class lnk_file read;
-	class security setenforce;
-	class service stop;
-	class system { reload status stop };
+	type shadow_t;
+	type cupsd_t;
+	type semanage_store_t;
+	type var_lib_t;
+	type init_t;
+	type systemd_tmpfiles_t;
+	type accountsd_t;
+	type init_var_lib_t;
+	type getty_var_run_t;
+	type useradd_t;
+	type systemd_gpt_generator_t;
+	type init_var_run_t;
+	class file { create getattr map open read relabelfrom relabelto rename setattr unlink write };
+	class process { dyntransition setcurrent };
+	class dir { add_name create getattr read write search };
+	class process2 nnp_transition;
+	class service { reload status stop };
+	class dbus send_msg;
 }
 
+#============= NetworkManager_t ==============
+allow NetworkManager_t iscsi_unit_file_t:service { reload status };
+
 #============= accountsd_t ==============
+allow accountsd_t var_lib_t:file { create getattr open read rename unlink write };
 allow accountsd_t shadow_t:file map;
 
-#============= geoclue_t ==============
-allow geoclue_t geoclue_tmp_t:file execute;
+#============= avahi_t ==============
+allow avahi_t xdm_t:dbus send_msg;
 
-#============= system_dbusd_t ==============
-allow system_dbusd_t init_var_run_t:lnk_file read;
-
-#============= systemd_tmpfiles_t ==============
-allow systemd_tmpfiles_t shadow_t:file getattr;
-allow systemd_tmpfiles_t shadow_t:file read;
-allow systemd_tmpfiles_t shadow_t:file open;
-allow systemd_tmpfiles_t shadow_t:file relabelto;
-
-#============= useradd_t ==============
-allow useradd_t unlabeled_t:dir { add_name write };
+#============= cupsd_t ==============
+allow cupsd_t etc_t:file { rename unlink };
 
 #============= init_t ==============
-allow init_t var_lib_t:dir setattr;
-allow init_t system_dbusd_var_run_t:sock_file read;
-allow init_t security_t:security setenforce;
+# because of initramfs doing 'load_policy -i'
+allow init_t self:process { dyntransition setcurrent };
 allow init_t semanage_store_t:file map;
+
+#============= init_t ==============
+allow init_t systemd_timedated_t:process2 nnp_transition;
+allow init_t var_t:dir create;
+allow init_t var_t:file { create open read rename setattr write };
 allow init_t machineid_t:file { create write relabelto read setattr open };
 
-#============= xdm_t ==============
-allow xdm_t var_run_t:dir setattr;
-allow xdm_t lib_t:service stop;
-allow xdm_t unconfined_t:system { reload status stop };
-
 #============= systemd_gpt_generator_t ==============
+# because /efi has no selinux label yet
 allow systemd_gpt_generator_t default_t:dir read;
 
-#============= auditd_t ==============
-allow auditd_t init_var_run_t:lnk_file read;
+#============= systemd_timedated_t ==============
+allow systemd_timedated_t init_var_lib_t:dir { add_name getattr write search };
+allow systemd_timedated_t init_var_lib_t:file { create open setattr write getattr read };
+allow systemd_timedated_t init_var_run_t:dir { add_name write };
+allow systemd_timedated_t init_var_run_t:file { create open write };
+allow systemd_timedated_t system_dbusd_var_run_t:dir read;
+allow systemd_timedated_t systemd_networkd_var_run_t:dir read;
+
+#============= systemd_tmpfiles_t ==============
+allow systemd_tmpfiles_t shadow_t:file { getattr relabelfrom relabelto };
+
+#============= useradd_t ==============
+allow useradd_t var_t:file { getattr open read write };
+
+#============= xdm_t ==============
+allow xdm_t avahi_t:dbus send_msg;
+allow xdm_t getty_var_run_t:file getattr;
+allow xdm_t lib_t:service stop;
