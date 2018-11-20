@@ -38,6 +38,7 @@ docbook-dtds
 docbook-style-xsl
 elfutils-devel
 f29-backgrounds-gnome
+f29-backgrounds-base
 fedora-gpg-keys
 fedora-packager
 fedora-release

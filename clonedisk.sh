@@ -140,12 +140,12 @@ if ! [[ $UPDATE ]]; then
     mkfs.fat -nEFI -F32 ${OUT}1
 
     if [[ $USE_CRYPT ]]; then
-           # ------------------------------------------------------------------------------
+        # ------
         # swap
         echo -n "zero key" \
             | cryptsetup luksFormat --type luks2 ${OUT}4 /dev/stdin
 
-        # ------------------------------------------------------------------------------
+        # ------
         # data
         echo -n "zero key" \
             | cryptsetup luksFormat --type luks2 ${OUT}5 /dev/stdin
@@ -157,24 +157,16 @@ fi
 
 mkdir -p boot
 mount ${OUT}1 boot
-mkdir -p boot/EFI/FedoraBook
-cp /efi/EFI/FedoraBook/1.efi boot/EFI/FedoraBook/1.efi
-[[ -e /efi/Lockdown.efi ]] && cp /efi/Lockdown.efi boot
-[[ -e /efi/Shell.efi ]] && cp /efi/Shell.efi boot/EFI/Boot/bootx64.efi
+cp -avr /efi/* boot/
 
 umount boot
 rmdir boot
 
 if ! [[ $UPDATE ]]; then
-    for i in FED1 FED2 FED3 FED4; do
-        efibootmgr -B -b $i || :
-    done
+    efibootmgr -B -b FED1 || :
     efibootmgr -C -b FED1 -d ${OUT_DEV} -p 1 -L "FedoraBook 1" -l '\efi\fedorabook\1.efi'
-    efibootmgr -C -b FED2 -d ${OUT_DEV} -p 1 -L "FedoraBook 2" -l '\efi\fedorabook\2.efi'
-    efibootmgr -C -b FED3 -d ${OUT_DEV} -p 1 -L "FedoraBook Old 1" -l '\efi\fedorabook\_1.efi'
-    efibootmgr -C -b FED4 -d ${OUT_DEV} -p 1 -L "FedoraBook Old 2" -l '\efi\fedorabook\_2.efi'
     BOOT_ORDER=$(efibootmgr | grep BootOrder: | { read _ a; echo "$a"; })
     if ! [[ $BOOT_ORDER == *FED1* ]]; then
-        efibootmgr -o "FED1,FED2,FED3,FED4,$BOOT_ORDER"
+        efibootmgr -o "FED1,$BOOT_ORDER"
     fi
 fi

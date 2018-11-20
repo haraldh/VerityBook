@@ -1,5 +1,7 @@
 #!/bin/bash -ex
 
+export LANG=C
+
 usage() {
     cat << EOF
 Usage: $PROGNAME [OPTION]
@@ -304,6 +306,7 @@ fi
 
 (( $RET == 0 ))
 
+
 chroot "$sysroot" /usr/bin/systemd-sysusers
 
 for i in passwd shadow group gshadow subuid subgid; do
@@ -348,9 +351,7 @@ cp "${BASEDIR}/${CRT}" "$sysroot"/etc/pki/${NAME}/crt
 
 rpm --root "$sysroot" -qa | sort > "$sysroot"/usr/rpm-list.txt
 
-cp "${BASEDIR}"/pre-pivot.sh "$sysroot"/pre-pivot.sh
-cp -avr "${BASEDIR}"/10verity "$sysroot"/usr/lib/dracut/modules.d/
-chmod 0755 "$sysroot"/pre-pivot.sh
+cp -avr "${BASEDIR}"/{10verity,20fedorabook} "$sysroot"/usr/lib/dracut/modules.d/
 
 KVER=$(cd "$sysroot"/lib/modules/; ls -1d ??* | tail -1)
 
@@ -368,27 +369,10 @@ fi
 chroot  "$sysroot" \
 	dracut -N --kver $KVER --force \
 	--filesystems "squashfs vfat xfs" \
-	--add-drivers "=drivers/char/tpm" \
 	-m "bash systemd systemd-initrd modsign crypt dm kernel-modules qemu rootfs-block" \
-	-m "udev-rules dracut-systemd base fs-lib shutdown terminfo resume verity" \
-	--install "fedorabook-clonedisk wipefs sfdisk dd mkfs.xfs mkswap chroot mountpoint mkdir stat openssl" \
-	--install "clevis clevis-luks-bind jose clevis-encrypt-tpm2 clevis-decrypt clevis-luks-unlock clevis-decrypt-tpm2"  \
-	--install "cryptsetup tail sort pwmake mktemp swapon" \
-	--install "tpm2_pcrextend tpm2_createprimary tpm2_pcrlist tpm2_createpolicy" \
-	--install "tpm2_create tpm2_load tpm2_unseal tpm2_takeownership chcon sleep" \
-	--include /pre-pivot.sh /lib/dracut/hooks/pre-pivot/80-pre-pivot.sh \
-	--install /usr/lib/systemd/system/clevis-luks-askpass.path \
-	--install /usr/lib/systemd/system/clevis-luks-askpass.service \
-	--install /usr/libexec/clevis-luks-askpass \
-	--include /usr/share/cracklib/ /usr/share/cracklib/ \
-	--install /usr/lib64/libtss2-esys.so.0 \
-	--install /usr/lib64/libtss2-tcti-device.so.0 \
-	--install /sbin/rngd \
-	--install /usr/lib/systemd/system/basic.target.wants/rngd.service \
+	-m "udev-rules dracut-systemd base fs-lib shutdown terminfo resume verity fedorabook" \
 	--reproducible \
 	/lib/modules/$KVER/initrd
-
-rm "$sysroot"/pre-pivot.sh
 
 umount "$sysroot"/var/cache/dnf
 
@@ -412,7 +396,11 @@ done
 #---------------
 # nss / passwd /shadow etc..
 
-#chroot "$sysroot" bash -c 'echo -n admin | passwd --stdin root'
+#chroot "$sysroot" bash -c '
+#    setfiles -v -F \
+#        /etc/selinux/targeted/contexts/files/file_contexts /usr/bin/passwd /etc/shadow /etc/passwd
+#    echo -n admin | passwd --stdin root
+#    '
 
 # rpcbind only accepts "files altfiles"
 # altfiles has no shadow/gshadow support, therefore we need db
@@ -441,7 +429,7 @@ chroot "$sysroot" bash -c '
         /usr/db/group.db \
     && mv /etc/{passwd,shadow,group,gshadow} /lib \
     && >/etc/passwd \
-    && > /etc/shadow \
+    && >/etc/shadow \
     && >/etc/group \
     && >/etc/gshadow
 '
@@ -847,6 +835,9 @@ mkdir -p "$sysroot"/{var,home,cfg,net,efi}
 
 # ------------------------------------------------------------------------------
 # SELinux relabel all the files
+
+#sed -i -e 's#SELINUX=enforcing#SELINUX=permissive#g' "$sysroot"/etc/selinux/config
+
 chroot "$sysroot" setfiles -v -F \
     /etc/selinux/targeted/contexts/files/file_contexts /
 
