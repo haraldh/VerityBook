@@ -74,19 +74,14 @@ done
 
 SOURCE=$(readlink -e "$1")
 IMAGE=$(readlink -f "$2")
+BASEURL=${SOURCE%/*}
 
-if ! [[ -d $SOURCE ]]; then
-    NAME="$(jq -r '.name' "$SOURCE")"
-    SOURCE="${SOURCE%/*}/$(jq -r '.name' "$SOURCE")-$(jq -r '.version' "$SOURCE")"
-else
-    NAME="$(jq -r '.name' "$SOURCE"/release.json)"
-fi
+NAME="$(jq -r '.name' "$SOURCE")"
 
-if ! [[ -d $SOURCE ]] || ! [[ $IMAGE ]]; then
+if ! [[ -f $SOURCE ]] || ! [[ $IMAGE ]]; then
     usage
     exit 1
 fi
-
 
 [[ $TMPDIR ]] || TMPDIR=/var/tmp
 readonly TMPDIR="$(realpath -e "$TMPDIR")"
@@ -115,11 +110,11 @@ trap '
 # clean up after ourselves no matter how we die.
 trap 'exit 1;' SIGINT
 
-ROOT_HASH=$(jq -r '.roothash' "$SOURCE"/release.json)
+ROOT_HASH=$(jq -r '.roothash' "$SOURCE")
 ROOT_UUID=${ROOT_HASH:32:8}-${ROOT_HASH:40:4}-${ROOT_HASH:44:4}-${ROOT_HASH:48:4}-${ROOT_HASH:52:12}
+ROOT_IMG="${BASEURL}/$(jq -r '.name' "$SOURCE")-${ROOT_HASH}.img"
+EFITAR="${BASEURL}/$(jq -r '.name' "$SOURCE")-${ROOT_HASH}-efi.tgz"
 
-# ------------------------------------------------------------------------------
-# Testdisk
 
 # create GPT table with EFI System Partition
 if ! [[ -b "${IMAGE}" ]]; then
@@ -164,27 +159,32 @@ fi
 if ! [[ $UPDATE ]]; then
     mkfs.fat -nEFI -F32 ${DEV_PART}1
 fi
-mkdir "$MY_TMPDIR"/boot
-mount "${DEV_PART}1" "$MY_TMPDIR"/boot
+mkdir "$MY_TMPDIR"/efi
+mount "${DEV_PART}1" "$MY_TMPDIR"/efi
 
-mkdir -p "$MY_TMPDIR"/boot/EFI/Boot
-mkdir -p "$MY_TMPDIR"/boot/EFI/FedoraBook
+pushd "$MY_TMPDIR"
+
+tar xzf "${EFITAR}"
+
+mkdir -p efi/EFI/Boot
 
 if [[ $USE_EFISHELL ]]; then
-    [[ -e "${SOURCE}"/efi/startup.nsh ]] && cp "${SOURCE}"/efi/startup.nsh "$MY_TMPDIR"/boot/
-    [[ -e "${SOURCE}"/efi/LockDown.efi ]] && cp "${SOURCE}"/efi/LockDown.efi "$MY_TMPDIR"/boot/
-    cp "${SOURCE}"/efi/Shell.efi "$MY_TMPDIR"/boot/EFI/Boot/bootx64.efi
-    cp "$SOURCE"/efi/EFI/${NAME}/bootx64-$ROOT_HASH.efi "$MY_TMPDIR"/boot/EFI/FedoraBook/1.efi
+    [[ -e efi/efi/${NAME}/startup.nsh ]] && cp efi/efi/${NAME}/startup.nsh efi/
+    [[ -e efi/efi/${NAME}/LockDown.efi ]] && cp efi/efi/${NAME}/LockDown.efi efi/
+    cp efi/efi/${NAME}/Shell.efi efi/EFI/Boot/bootx64.efi
+    cp efi/efi/${NAME}/bootx64-${ROOT_HASH}.efi efi/efi/${NAME}/1.efi
 else
-    cp "$SOURCE"/efi/EFI/${NAME}/bootx64-$ROOT_HASH.efi "$MY_TMPDIR"/boot/EFI/Boot/bootx64.efi
-    cp "$SOURCE"/efi/EFI/${NAME}/bootx64-$ROOT_HASH.efi "$MY_TMPDIR"/boot/EFI/FedoraBook/1.efi
+    cp efi/efi/${NAME}/bootx64-${ROOT_HASH}.efi efi/efi/${NAME}/1.efi
+    cp efi/efi/${NAME}/bootx64-${ROOT_HASH}.efi efi/EFI/Boot/bootx64.efi
 fi
 
-umount "$MY_TMPDIR"/boot
+umount "$MY_TMPDIR"/efi
+
+popd
 
 # ------------------------------------------------------------------------------
 # root1
-dd bs=4096 conv=fsync if="$SOURCE"/root.img of=${DEV_PART}2 status=progress
+dd bs=4096 conv=fsync if="$ROOT_IMG" of=${DEV_PART}2 status=progress
 
 # ------------------------------------------------------------------------------
 # data
