@@ -31,6 +31,7 @@ require {
 	class process2 nnp_transition;
 	class service { reload status stop };
 	class dbus send_msg;
+	class sock_file read;
 }
 
 #============= NetworkManager_t ==============
@@ -67,6 +68,7 @@ allow systemd_timedated_t init_var_lib_t:file { create open setattr write getatt
 allow systemd_timedated_t init_var_run_t:dir { add_name write };
 allow systemd_timedated_t init_var_run_t:file { create open write };
 allow systemd_timedated_t system_dbusd_var_run_t:dir read;
+allow systemd_timedated_t system_dbusd_var_run_t:sock_file read;
 allow systemd_timedated_t systemd_networkd_var_run_t:dir read;
 
 #============= systemd_tmpfiles_t ==============
