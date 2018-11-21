@@ -111,7 +111,7 @@ mkdir -p /run/initramfs/mnt
 
 mount -o discard $datadev /run/initramfs/mnt || die "Failed to mount $datadev"
 
-for i in var home cfg local; do
+for i in var home cfg; do
     if ! [[ -d /run/initramfs/mnt/$i ]]; then
         mkdir /run/initramfs/mnt/$i
         FIRST_TIME=1
@@ -123,7 +123,8 @@ done
 mount -o bind /run/initramfs/mnt/var   /sysroot/var
 mount -o bind /run/initramfs/mnt/home  /sysroot/home
 mount -o bind /run/initramfs/mnt/cfg   /sysroot/cfg
-mount -o bind /run/initramfs/mnt/local /sysroot/usr/local
+[[ -d /run/initramfs/mnt/local ]] \
+    && mount -o bind /run/initramfs/mnt/local /sysroot/usr/local
 umount -l /run/initramfs/mnt &>/dev/null
 
 if [[ $FIRST_TIME ]]; then
@@ -132,13 +133,6 @@ if [[ $FIRST_TIME ]]; then
 
     mount -o bind /sys /sysroot/sys
     mount -t selinuxfs none /sysroot/sys/fs/selinux
-
-#    if [ -f /etc/machine-id ]; then
-#        cp /etc/machine-id /sysroot/cfg/machine-id
-#    else
-#        R=$(</proc/sys/kernel/random/uuid)
-#        echo ${R//-} >/sysroot/cfg/machine-id
-#    fi
 
     chroot /sysroot bash -c '
         /usr/sbin/load_policy -i
