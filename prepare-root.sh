@@ -623,13 +623,6 @@ sed -i -e 's#ReadWritePaths=/etc#ReadWritePaths=/cfg#g' \
     "$sysroot"/lib/systemd/system/systemd-timedated.service \
     "$sysroot"/lib/systemd/system/systemd-hostnamed.service
 
-#cat > "$sysroot"/lib/systemd/system-generators/machine-id <<EOF
-##!/bin/bash -x
-#/sbin/restorecon -m -F -v /cfg /var /home /cfg/machine-id /var/run /var/lock
-#exit 0
-#EOF
-#chmod a+x "$sysroot"/lib/systemd/system-generators/machine-id
-
 cat >> "$sysroot"/usr/lib/tmpfiles.d/00-basics.conf <<EOF
 C /cfg/vconsole.conf - - - - -
 C /cfg/locale.conf - - - - -
