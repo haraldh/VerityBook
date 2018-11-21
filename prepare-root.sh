@@ -295,6 +295,8 @@ dnf -v --nogpgcheck \
     libfaketime \
     sbsigntools \
     squashfs-tools \
+    policycoreutils-python-utils \
+    xdelta \
     $PKGLIST
 
 RET=$?

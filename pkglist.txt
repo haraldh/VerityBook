@@ -144,7 +144,7 @@ tree
 usbutils
 vim-enhanced
 virt-manager
-xdelta
+xclip
 xz
 xz-devel
 zd1211-firmware
