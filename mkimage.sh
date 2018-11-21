@@ -33,7 +33,6 @@ fi
 
 eval set -- "$TEMP"
 unset TEMP
-. /etc/os-release
 
 while true; do
     case "$1" in

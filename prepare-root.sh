@@ -333,17 +333,22 @@ for i in passwd shadow group gshadow subuid subgid; do
     chmod u+r "${STATEDIR}/$i"
 done
 
-cp "$BASEDIR"/FedoraBook.te "$BASEDIR"/FedoraBook.fc "$sysroot"/var/tmp
-chroot "$sysroot" bash -c '
-    cd /var/tmp
-    make -f  /usr/share/selinux/devel/Makefile
-    semodule --noreload -i FedoraBook.pp
-'
+if [[ -f "${BASEDIR}/${NAME}.te" ]] || [[ -f "${BASEDIR}/${NAME}.te" ]]; then
+    for i in "${BASEDIR}/${NAME}.te" "${BASEDIR}/${NAME}.te"; do
+        [[ -f "$i" ]] && cp "$i" "$sysroot"/var/tmp
+    done
+    chroot "$sysroot" bash -c "
+        cd /var/tmp
+        make -f  /usr/share/selinux/devel/Makefile
+        semodule --noreload -i ${NAME}.pp
+    "
+fi
+
 chroot "$sysroot" semanage fcontext --noreload -a -e /etc /cfg
 
-cp "$BASEDIR/clonedisk.sh" "$sysroot"/usr/bin/fedorabook-clonedisk
-cp "$BASEDIR/update.sh" "$sysroot"/usr/bin/fedorabook-update
-cp "$BASEDIR/mkimage.sh" "$sysroot"/usr/bin/fedorabook-mkimage
+cp "$BASEDIR/clonedisk.sh" "$sysroot"/usr/bin/${NAME,,}-clonedisk
+cp "$BASEDIR/update.sh" "$sysroot"/usr/bin/${NAME,,}-update
+cp "$BASEDIR/mkimage.sh" "$sysroot"/usr/bin/${NAME,,}-mkimage
 
 mkdir -p "$sysroot"/etc/pki/${NAME}
 openssl x509 -in "${BASEDIR}/${CRT}" -pubkey -noout > "$sysroot"/etc/pki/${NAME}/pubkey
