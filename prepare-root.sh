@@ -772,12 +772,24 @@ chroot "$sysroot" bash -x -c '
     update-ca-trust
 '
 
+#--------------------------------------
+# remove packages only needed for build
+dnf -v \
+    --installroot "$sysroot"/ \
+    --releasever "$RELEASEVER" \
+    --setopt=keepcache=True \
+    --setopt=reposdir="$REPOSD" \
+    remove -y \
+    libfaketime \
+    selinux-policy-devel \
+    dracut
+
 #---------------
-# var
+# cleanup var
 rm -fr "$sysroot"/var/lib/selinux
 rm -fr "$sysroot"//usr/lib/fontconfig/cache
-cp -avr "$sysroot"/var/lib/rpm "$STATEDIR"/
-rm -fr "$sysroot"/var/lib/rpm
+[[ -d "$STATEDIR"/rpm ]] && rm -fr "$STATEDIR"/rpm
+mv "$sysroot"/var/lib/rpm "$STATEDIR"/
 rm -fr "$sysroot"/var/lib/sepolgen
 rm -fr "$sysroot"/var/lib/dnf
 rm -fr "$sysroot"/var/lib/flatpak/repo/tmp
@@ -785,6 +797,9 @@ rm -fr "$sysroot"/var/log/dnf*
 rm -fr "$sysroot"/var/log/hawkey*
 rm -fr "$sysroot"/var/cache/*/*
 rm -fr "$sysroot"/var/tmp/*
+
+#----------------
+# create tmpfiles
 mv "$sysroot"/lib/tmpfiles.d/var.conf "$sysroot"/lib/tmpfiles.d-var.conf
 chroot "$sysroot" bash -c '
     for i in $(find -H /var -xdev -type d); do
@@ -933,4 +948,3 @@ chown "${SUDO_USER:-$USER}" \
     "${BASEOUTDIR}/${NAME}-${ROOT_HASH}.img" \
     "${BASEOUTDIR}/${NAME}-${ROOT_HASH}-efi.tgz" \
     "${BASEOUTDIR}/${NAME}-latest.json"
-
