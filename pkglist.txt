@@ -102,6 +102,8 @@ libmicrohttpd-devel
 libmount-devel
 libseccomp-devel
 libselinux-devel
+libvarlink-util
+libvarlink-devel
 libvirt-bash-completion
 libvirt-client
 libvirt-daemon-config-network
