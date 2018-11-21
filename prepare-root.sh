@@ -240,7 +240,7 @@ if [[ $NO_SCRIPTS ]]; then
 fi
 
 set +e
-dnf -v --nogpgcheck \
+dnf -v \
     --installroot "$sysroot"/ \
     --releasever "$RELEASEVER" \
     --exclude="$EXCLUDELIST" \
