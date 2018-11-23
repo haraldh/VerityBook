@@ -781,8 +781,7 @@ dnf -v \
     --setopt=reposdir="$REPOSD" \
     remove -y \
     libfaketime \
-    selinux-policy-devel \
-    dracut
+    selinux-policy-devel
 
 #---------------
 # cleanup var
