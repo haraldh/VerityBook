@@ -36,6 +36,7 @@ dbus-devel
 dnf
 docbook-dtds
 docbook-style-xsl
+ebtables
 elfutils-devel
 f29-backgrounds-gnome
 f29-backgrounds-base
