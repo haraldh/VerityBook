@@ -779,6 +779,7 @@ dnf -v \
     --releasever "$RELEASEVER" \
     --setopt=keepcache=True \
     --setopt=reposdir="$REPOSD" \
+    --exclude="dnf" \
     remove -y \
     libfaketime \
     selinux-policy-devel
