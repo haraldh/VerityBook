@@ -18,6 +18,7 @@ adwaita-icon-theme
 alsa-firmware
 alsa-tools-firmware.x86_64
 asciidoc
+asciinema
 atmel-firmware
 audit-libs-devel
 authselect
