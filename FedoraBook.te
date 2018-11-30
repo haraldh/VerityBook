@@ -24,14 +24,18 @@ require {
 	type getty_var_run_t;
 	type useradd_t;
 	type systemd_gpt_generator_t;
+	type system_cronjob_tmp_t;
 	type init_var_run_t;
+	type svirt_t;
+	type user_home_dir_t;
 	class file { create getattr map open read relabelfrom relabelto rename setattr unlink write };
 	class process { dyntransition setcurrent };
-	class dir { add_name create getattr read write search };
+	class dir { add_name create getattr read write search mounton };
 	class process2 nnp_transition;
 	class service { reload status stop };
 	class dbus send_msg;
 	class sock_file read;
+	class lnk_file { getattr read };
 }
 
 #============= NetworkManager_t ==============
@@ -51,6 +55,7 @@ allow cupsd_t etc_t:file { rename unlink };
 # because of initramfs doing 'load_policy -i'
 allow init_t self:process { dyntransition setcurrent };
 allow init_t semanage_store_t:file map;
+allow init_t system_cronjob_tmp_t:dir mounton;
 
 #============= init_t ==============
 allow init_t systemd_timedated_t:process2 nnp_transition;
@@ -65,6 +70,7 @@ allow systemd_gpt_generator_t default_t:dir read;
 #============= systemd_timedated_t ==============
 allow systemd_timedated_t init_var_lib_t:dir { add_name getattr write search };
 allow systemd_timedated_t init_var_lib_t:file { create open setattr write getattr read };
+allow systemd_timedated_t init_var_lib_t:lnk_file { getattr read };
 allow systemd_timedated_t init_var_run_t:dir { add_name write };
 allow systemd_timedated_t init_var_run_t:file { create open write };
 allow systemd_timedated_t system_dbusd_var_run_t:dir read;
@@ -81,3 +87,6 @@ allow useradd_t var_t:file { getattr open read write };
 allow xdm_t avahi_t:dbus send_msg;
 allow xdm_t getty_var_run_t:file getattr;
 allow xdm_t lib_t:service stop;
+
+#============= svirt_t ==============
+allow svirt_t user_home_dir_t:dir read;
