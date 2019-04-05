@@ -200,6 +200,8 @@ mount -o bind /sys "$sysroot/sys"
 mount -t devtmpfs devtmpfs "$sysroot/dev"
 
 mkdir -p "$sysroot"/var/cache/dnf
+mkdir -p "$sysroot"/etc
+cp /etc/os-release "$sysroot"/etc
 mkdir -p "$STATEDIR"/dnf
 mount -o bind "$STATEDIR"/dnf "$sysroot"/var/cache/dnf
 
@@ -733,6 +735,10 @@ fi
 if [[ -f "$sysroot"/etc/fwupd/uefi.conf ]]; then
     sed -i -e 's#RequireShimForSecureBoot=.*#RequireShimForSecureBoot=false#g' \
         "$sysroot"/etc/fwupd/uefi.conf
+    CRT=${CRT:-${BASEDIR}/${NAME}.crt}
+    KEY=${KEY:-${BASEDIR}/${NAME}.key}
+
+    sbsign --key "$KEY" --cert "$CRT" --output "$sysroot"/usr/libexec/fwupd/efi/fwupdx64.efi.signed "$sysroot"/usr/libexec/fwupd/efi/fwupdx64.efi
 fi
 
 #---------------
