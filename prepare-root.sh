@@ -270,7 +270,6 @@ dnf -v \
     less \
     polkit \
     util-linux \
-    rng-tools \
     openssl \
     cryptsetup \
     clevis \
@@ -369,7 +368,7 @@ sed -ie 's#\(tpm2_[^ ]*\) #\1 -T device:${TPM2TOOLS_DEVICE_FILE[0]} #g' "$sysroo
 
 #---------------
 # rngd
-ln -fsnr "$sysroot"/usr/lib/systemd/system/rngd.service "$sysroot"/usr/lib/systemd/system/basic.target.wants/rngd.service
+#ln -fsnr "$sysroot"/usr/lib/systemd/system/rngd.service "$sysroot"/usr/lib/systemd/system/basic.target.wants/rngd.service
 
 if [[ $NO_SCRIPTS ]]; then
     chroot  "$sysroot" depmod -a $KVER

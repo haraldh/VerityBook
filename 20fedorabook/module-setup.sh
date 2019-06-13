@@ -19,8 +19,6 @@ install() {
 	    /usr/libexec/clevis-luks-askpass \
 	    /usr/lib64/libtss2-esys.so.0 \
 	    /usr/lib64/libtss2-tcti-device.so.0 \
-	    /sbin/rngd \
-	    /usr/lib/systemd/system/basic.target.wants/rngd.service \
         ${NULL}
 
 	inst_dir /usr/share/cracklib
