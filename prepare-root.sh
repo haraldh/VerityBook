@@ -237,6 +237,7 @@ if [[ $NO_SCRIPTS ]]; then
     ln -s usr/lib64 "$sysroot"/lib64
     mkdir "$sysroot"/run || :
     mkdir "$sysroot"/var || :
+    mkdir -p "$sysroot"/etc/X11/xinit/xinput.d || :
     ln -s ../run "$sysroot"/var/run
     ln -s ../run/lock "$sysroot"/var/lock
 fi

@@ -1,3 +1,4 @@
+podman
 ImageMagick
 exa
 bat
@@ -11,7 +12,6 @@ alsa-tools-firmware.x86_64
 asciidoc
 asciinema
 atmel-firmware
-atomic-registries
 audit-libs-devel
 authselect
 autofs
@@ -26,7 +26,6 @@ ca-certificates
 @c-development
 clang-devel
 cmake
-conmon
 container-selinux
 cryptsetup-devel
 cups
@@ -53,7 +52,6 @@ firewalld-filesystem
 flatpak
 @Fonts
 fwupd
-fwupdate-efi
 gawk
 gcc
 gcc-c++
