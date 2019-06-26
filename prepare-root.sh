@@ -310,7 +310,6 @@ fi
 
 (( $RET == 0 ))
 
-
 chroot "$sysroot" /usr/bin/systemd-sysusers
 
 for i in passwd shadow group gshadow subuid subgid; do
@@ -479,6 +478,8 @@ sed -i -e 's#/etc/passwd#/cfg/passwd#g;s#/etc/shadow#/cfg/shadow#g;s#/etc/gshado
     "$sysroot"/usr/bin/newgidmap \
     "$sysroot"/usr/bin/newuidmap \
     "$sysroot"/usr/sbin/newusers
+
+chmod u+s "$sysroot"/usr/bin/newgidmap "$sysroot"/usr/bin/newuidmap
 
 sed -i -e 's#/etc/.pwd.lock#/cfg/.pwd.lock#g' \
     "$sysroot"/lib*/libc.so.* \

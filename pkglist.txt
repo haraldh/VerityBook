@@ -1,3 +1,5 @@
+toolbox
+sssd-kcm
 podman
 ImageMagick
 exa

@@ -1,11 +1,15 @@
 module FedoraBook 1.0;
 
 require {
+	type policykit_auth_t;
+	type policykit_t;
+	type sssd_t;
 	type system_dbusd_var_run_t;
 	type iscsi_unit_file_t;
 	type etc_t;
 	type systemd_timedated_t;
 	type var_t;
+	type usr_t;
 	type NetworkManager_t;
 	type systemd_networkd_var_run_t;
 	type default_t;
@@ -28,13 +32,16 @@ require {
 	type init_var_run_t;
 	type svirt_t;
 	type user_home_dir_t;
+        type chkpwd_t;
+	type xdm_var_lib_t;
+	class sock_file { create write };
 	class file { create getattr map open read relabelfrom relabelto rename setattr unlink write };
 	class process { dyntransition setcurrent };
-	class dir { add_name create getattr read write search mounton };
+	class dir { add_name create getattr read write search mounton map };
 	class process2 nnp_transition;
 	class service { reload status stop };
 	class dbus send_msg;
-	class sock_file read;
+	class sock_file { read write };
 	class lnk_file { getattr read };
 }
 
@@ -87,6 +94,24 @@ allow useradd_t var_t:file { getattr open read write };
 allow xdm_t avahi_t:dbus send_msg;
 allow xdm_t getty_var_run_t:file getattr;
 allow xdm_t lib_t:service stop;
+allow xdm_t xdm_var_lib_t:dir map;
 
 #============= svirt_t ==============
 allow svirt_t user_home_dir_t:dir read;
+
+#============= chkpwd_t ==============
+allow chkpwd_t usr_t:file map;
+
+
+#============= policykit_auth_t ==============
+allow policykit_auth_t var_lib_t:file read;
+allow policykit_auth_t var_lib_t:sock_file write;
+
+#============= policykit_t ==============
+allow policykit_t var_lib_t:file read;
+allow policykit_t var_lib_t:sock_file write;
+
+#============= sssd_t ==============
+allow sssd_t var_lib_t:file read;
+allow sssd_t var_lib_t:sock_file { create write };
+
