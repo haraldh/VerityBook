@@ -479,7 +479,8 @@ sed -i -e 's#/etc/passwd#/cfg/passwd#g;s#/etc/shadow#/cfg/shadow#g;s#/etc/gshado
     "$sysroot"/usr/bin/newuidmap \
     "$sysroot"/usr/sbin/newusers
 
-chmod u+s "$sysroot"/usr/bin/newgidmap "$sysroot"/usr/bin/newuidmap
+setcap 'cap_setgid+ep' "$sysroot"/usr/bin/newgidmap \
+       'cap_setuid+ep' "$sysroot"/usr/bin/newuidmap
 
 sed -i -e 's#/etc/.pwd.lock#/cfg/.pwd.lock#g' \
     "$sysroot"/lib*/libc.so.* \
