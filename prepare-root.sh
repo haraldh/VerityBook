@@ -692,7 +692,7 @@ ln -fsnr "$sysroot"/usr/lib/systemd/system/systemd-udev-settle-dri.service \
 # Flathub
 if [[ -d "$sysroot"/usr/share/flatpak ]]; then
     mkdir -p "$sysroot"/usr/share/factory/var/lib/
-    curl https://flathub.org/repo/flathub.flatpakrepo -o "$sysroot"/usr/share/flatpak/flathub.flatpakrepo
+    curl -L https://dl.flathub.org/repo/flathub.flatpakrepo -o "$sysroot"/usr/share/flatpak/flathub.flatpakrepo
     chroot "$sysroot" /usr/bin/flatpak remote-add --if-not-exists flathub /usr/share/flatpak/flathub.flatpakrepo
 fi
 
