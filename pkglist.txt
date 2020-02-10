@@ -1,3 +1,18 @@
+musl-devel
+musl-libc-static
+musl-gcc
+musl-clang
+zlib-static
+rlwrap
+ibm-plex-mono-fonts
+openssl-static
+openssl-devel
+kup
+virt-install
+qemu-system-ppc
+qemu-system-arm
+qemu-system-aarch64
+qemu-system-s390x
 toolbox
 sssd-kcm
 podman
@@ -21,9 +36,7 @@ b43-openfwwf
 bash-completion
 bfa-firmware
 bind-utils
-btrfs-progs-devel
 bzip2
-bzip2-devel
 ca-certificates
 @c-development
 clang-devel
@@ -33,10 +46,8 @@ cryptsetup-devel
 cups
 cups-client
 cups-ipptool
-dbus-devel
 @development-libs
 @development-tools
-device-mapper-devel
 dnf
 docbook-dtds
 docbook-style-xsl
@@ -73,7 +84,6 @@ gnupg
 gnutls-devel
 gobject-introspection-devel
 golang
-golang-github-cpuguy83-go-md2man
 gperf
 gpgme-devel
 gstreamer1-plugin-openh264
@@ -165,7 +175,6 @@ pigz
 pkgconfig
 procps-ng
 psmisc
-python2-future
 python3-devel
 python3-future
 python3-lxml
@@ -173,8 +182,9 @@ python3-wheel
 qrencode-devel
 rpcbind
 rsync
-runc
+crun
 screen
+ruby
 skopeo-containers
 slirp4netns
 systemd-devel
