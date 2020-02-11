@@ -1,4 +1,4 @@
-module FedoraBook 1.0;
+module VerityBook 1.0;
 
 require {
 	type policykit_auth_t;

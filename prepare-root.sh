@@ -14,7 +14,7 @@ Creates a directory with a readonly root on squashfs, a dm_verity file and an EF
   --releasever NUM   Used Fedora release version NUM (default: $VERSION_ID)
   --outname JSON     Creates \$JSON.json symlinked to that release (default: NAME-NUM-DATE)
   --baseoutdir DIR   Parent directory of --outdir
-  --name NAME        The NAME of the product (default: FedoraBook)
+  --name NAME        The NAME of the product (default: VerityBook)
   --logo FILE        Uses the .bmp FILE to display as a splash screen (default: logo.bmp)
   --quirks LIST      Source the list of quirks from the quikrs directory
   --gpgkey FILE      Use FILE as the signing gpg key
@@ -143,7 +143,7 @@ while true; do
     esac
 done
 
-NAME=${NAME:-"FedoraBook"}
+NAME=${NAME:-"VerityBook"}
 RELEASEVER=${RELEASEVER:-$VERSION_ID}
 BASEOUTDIR=$(realpath ${BASEOUTDIR:-"$CURDIR"})
 CRT=${CRT:-${NAME}.crt}
@@ -359,7 +359,7 @@ cp "${BASEDIR}/${CRT}" "$sysroot"/etc/pki/${NAME}/crt
 
 rpm --root "$sysroot" -qa | sort > "$sysroot"/usr/rpm-list.txt
 
-cp -avr "${BASEDIR}"/{10verity,20fedorabook} "$sysroot"/usr/lib/dracut/modules.d/
+cp -avr "${BASEDIR}"/{10verity,20veritybook} "$sysroot"/usr/lib/dracut/modules.d/
 
 KVER=$(cd "$sysroot"/lib/modules/; ls -1d ??* | tail -1)
 
@@ -378,7 +378,7 @@ chroot  "$sysroot" \
 	dracut -N --kver $KVER --force \
 	--filesystems "squashfs vfat xfs" \
 	-m "bash systemd systemd-initrd modsign crypt dm kernel-modules qemu rootfs-block" \
-	-m "udev-rules dracut-systemd base fs-lib shutdown terminfo resume verity fedorabook" \
+	-m "udev-rules dracut-systemd base fs-lib shutdown terminfo resume verity veritybook" \
 	--reproducible \
 	/lib/modules/$KVER/initrd
 

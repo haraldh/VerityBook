@@ -1,4 +1,4 @@
-# FedoraBook
+# VerityBook
 
 Let's put all the fancy features together, we developed in the last years:
 
@@ -80,56 +80,56 @@ All configurable files have been whitelisted and moved to /cfg.
 ### Prepare the Image
 
 For reproducible squashfs builds use https://github.com/squashfskit/squashfskit. Clone it in the 
-main FedoraBook directory and build it.
+main VerityBook directory and build it.
 
 ```bash
 $ sudo ./prepare-root.sh \
   --pkglist pkglist.txt \
   --excludelist excludelist.txt \
-  --name FedoraBook \
+  --name VerityBook \
   --logo logo.bmp \
   --reposd <REPOSDIR> \
   --releasever 29
 ```
 
 This will create the following files and directories:
-- ```FedoraBook``` - keep this directory around for updates
+- ```VerityBook``` - keep this directory around for updates
   (includes needed passwd/group history and rpmdb)
-- ```FedoraBook-29.<datetime>``` - the resulting <IMGDIR>
-- ```FedoraBook-latest.json``` - a metadata file for the update server
+- ```VerityBook-29.<datetime>``` - the resulting <IMGDIR>
+- ```VerityBook-latest.json``` - a metadata file for the update server
 
-or download a prebuilt [image](https://harald.fedorapeople.org/downloads/fedorabook.tgz),
+or download a prebuilt [image](https://harald.fedorapeople.org/downloads/veritybook.tgz),
 unpack and use this as ```<IMGDIR>```.
 
 ## Sign the release
 
 Get [efitools](https://github.com/haraldh/efitools.git). Compile and create your keys.
-Copy ```LockDown.efi``` ```DB.key``` ```DB.crt``` from efitools to the fedorabook directory.
+Copy ```LockDown.efi``` ```DB.key``` ```DB.crt``` from efitools to the veritybook directory.
 
-Rename ```DB.key``` ```DB.crt``` to ```FedoraBook.key``` and ```FedoraBook.crt```
+Rename ```DB.key``` ```DB.crt``` to ```VerityBook.key``` and ```VerityBook.crt```
 
-Optionally copy ```Shell.efi``` (might be ```/usr/share/edk2/ovmf/Shell.efi```) to the fedorabook directory.
+Optionally copy ```Shell.efi``` (might be ```/usr/share/edk2/ovmf/Shell.efi```) to the veritybook directory.
 
 
 ```bash
-$ sudo ./mkrelease.sh FedoraBook-latest.json
+$ sudo ./mkrelease.sh VerityBook-latest.json
 ```
 
 then upload to your update server:
 ```bash
-$ TARBALL="$(jq -r '.name' FedoraBook-latest.json)-$(jq -r '.version' FedoraBook-latest.json)".tgz
-$ scp "$TARBALL" FedoraBook-latest.json <DESTINATION> 
+$ TARBALL="$(jq -r '.name' VerityBook-latest.json)-$(jq -r '.version' VerityBook-latest.json)".tgz
+$ scp "$TARBALL" VerityBook-latest.json <DESTINATION>
 ```
 
 
 ## QEMU disk image
 ```bash
-$ sudo ./mkimage.sh <IMGDIR> image.raw 
+$ sudo ./mkimage.sh <IMGDIR> image.raw
 ```
 
 or with the json file:
 ```bash
-$ sudo ./mkimage.sh FedoraBook-latest.json image.raw 
+$ sudo ./mkimage.sh VerityBook-latest.json image.raw
 ```
 
 ## USB stick
@@ -139,7 +139,7 @@ $ sudo ./mkimage.sh <IMGDIR> /dev/disk/by-path/pci-…-usb…
 
 or with the json file:
 ```bash
-$ sudo ./mkimage.sh FedoraBook-latest.json /dev/disk/by-path/pci-…-usb…
+$ sudo ./mkimage.sh VerityBook-latest.json /dev/disk/by-path/pci-…-usb…
 ```
 
 ## Install from USB stick
@@ -167,7 +167,7 @@ If you cannot:
 - use the option ```--crypt``` otherwise
 
 ```bash
-$ sudo fedorabook-clonedisk <options> <usb stick device> <harddisk device>
+$ sudo veritybook-clonedisk <options> <usb stick device> <harddisk device>
 ```
 
 ### Post
@@ -208,7 +208,7 @@ The initial password is ```zero key```.
 ## Updating
 
 ```bash
-# systemd-inhibit fedorabook-update <UPDATE-URL>
+# systemd-inhibit veritybook-update <UPDATE-URL>
 ```
 
 ## Secure Boot
@@ -222,4 +222,4 @@ Make sure the BIOS contains an option to restore the default keys.
 - Boot from stick with Shell.efi and LockDown.efi
 - Execute LockDown.efi
 - reset
-- Secure Boot into signed FedoraBook release
+- Secure Boot into signed VerityBook release
