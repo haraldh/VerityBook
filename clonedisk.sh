@@ -169,13 +169,12 @@ if ! [[ $UPDATE ]]; then
         efibootmgr -B -b $i || :
     done
     efibootmgr -B -b FED1 || :
-    efibootmgr -C -b FED1 -d ${OUT_DEV} -p 1 -L "${NAME} 1" -l "\efi\${NAME}\1.efi"
-    efibootmgr -C -b FED2 -d ${OUT_DEV} -p 1 -L "${NAME} 2" -l "\efi\${NAME}\2.efi"
-    efibootmgr -C -b FED3 -d ${OUT_DEV} -p 1 -L "${NAME} Old 1" -l "\efi\${NAME}\_1.efi"
-    efibootmgr -C -b FED4 -d ${OUT_DEV} -p 1 -L "${NAME} Old 2" -l "\efi\${NAME}\_2.efi"
+    efibootmgr -C -b FED1 -d ${OUT_DEV} -p 1 -L "${NAME} 1" -l "\\efi\\${NAME}\\1.efi"
+    efibootmgr -C -b FED2 -d ${OUT_DEV} -p 1 -L "${NAME} 2" -l "\\efi\\${NAME}\\2.efi"
+    efibootmgr -C -b FED3 -d ${OUT_DEV} -p 1 -L "${NAME} Old 1" -l "\\efi\\${NAME}\\_1.efi"
+    efibootmgr -C -b FED4 -d ${OUT_DEV} -p 1 -L "${NAME} Old 2" -l "\\efi\\${NAME}\\_2.efi"
     BOOT_ORDER=$(efibootmgr | grep BootOrder: | { read _ a; echo "$a"; })
     if ! [[ $BOOT_ORDER == *FED1* ]]; then
         efibootmgr -o "FED1,FED2,FED3,FED4,$BOOT_ORDER"
-        efibootmgr -o "FED1,$BOOT_ORDER"
     fi
 fi
