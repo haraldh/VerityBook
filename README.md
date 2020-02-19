@@ -12,7 +12,7 @@ Let's put all the fancy features together, we developed in the last years:
 
 and build a Chromebook like Fedorabook, where you can install all software via Flatpak.
 
-This is WIP. Please test and report issues, comments or missing components on https://pagure.io/Fedorabook/issues
+This is WIP. Please test and report issues, comments or missing components on https://github.com/haraldh/VerityBook/issues
 
 ## Goals
 - secure boot to the login screen
