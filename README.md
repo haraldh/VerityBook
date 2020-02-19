@@ -67,9 +67,6 @@ All configurable files have been whitelisted and moved to /cfg.
 - firmware update (works, but needs a secure boot signed fwup*.efi)
 
 ## Known Failures
-- no kernel command line on DELL ( you need a newer systemd https://github.com/systemd/systemd/pull/10001 )
-  cp linuxx64.efi.stub to this git repo dir from a compiled upstream systemd
-- gnome-software: can't update firmware repo
 - systemd: failed to umount /var
 - needs a ´´´restorecond -FmvR /cfg /var /home´´´ after first boot, because systemd-tmpfiles does not seem
   to restore all context
