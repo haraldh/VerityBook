@@ -34,6 +34,8 @@ require {
 	type user_home_dir_t;
         type chkpwd_t;
 	type xdm_var_lib_t;
+        type container_t;
+        type kvm_device_t;
 	class sock_file { create write };
 	class file { create getattr map open read relabelfrom relabelto rename setattr unlink write };
 	class process { dyntransition setcurrent };
@@ -43,7 +45,12 @@ require {
 	class dbus send_msg;
 	class sock_file { read write };
 	class lnk_file { getattr read };
+        class chr_file { getattr ioctl open read write };
 }
+
+#============= container_t ==============
+allow container_t kvm_device_t:chr_file getattr;
+allow container_t kvm_device_t:chr_file { ioctl open read write };
 
 #============= NetworkManager_t ==============
 allow NetworkManager_t iscsi_unit_file_t:service { reload status };
