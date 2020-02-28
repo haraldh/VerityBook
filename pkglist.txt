@@ -1,3 +1,4 @@
+ShellCheck
 musl-devel
 musl-libc-static
 musl-gcc
