@@ -79,7 +79,7 @@ All configurable files have been whitelisted and moved to /cfg.
 For reproducible squashfs builds use https://github.com/squashfskit/squashfskit. Clone it in the 
 main VerityBook directory and build it.
 
-```bash
+```console
 $ sudo ./prepare-root.sh \
   --pkglist pkglist.txt \
   --excludelist excludelist.txt \
@@ -108,34 +108,40 @@ Rename ```DB.key``` ```DB.crt``` to ```VerityBook.key``` and ```VerityBook.crt``
 Optionally copy ```Shell.efi``` (might be ```/usr/share/edk2/ovmf/Shell.efi```) to the veritybook directory.
 
 
-```bash
+```console
 $ sudo ./mkrelease.sh VerityBook-latest.json
 ```
 
+if you want to make deltas:
+```console
+$ sudo ./mkdelta.sh ${CHECKPOINT:+--checkpoint} dist/VerityBook-latest.json 
+```
+If `CHECKPOINT` is set, it will remove old images.
+
 then upload to your update server:
-```bash
+```console
 $ TARBALL="$(jq -r '.name' VerityBook-latest.json)-$(jq -r '.version' VerityBook-latest.json)".tgz
 $ scp "$TARBALL" VerityBook-latest.json <DESTINATION>
 ```
 
 
 ## QEMU disk image
-```bash
+```console
 $ sudo ./mkimage.sh <IMGDIR> image.raw
 ```
 
 or with the json file:
-```bash
+```console
 $ sudo ./mkimage.sh VerityBook-latest.json image.raw
 ```
 
 ## USB stick
-```bash
+```console
 $ sudo ./mkimage.sh <IMGDIR> /dev/disk/by-path/pci-…-usb…
 ```
 
 or with the json file:
-```bash
+```console
 $ sudo ./mkimage.sh VerityBook-latest.json /dev/disk/by-path/pci-…-usb…
 ```
 
@@ -163,7 +169,7 @@ If you cannot:
 - use the option ```--crypttpm2```, if you have a TPM2 chip
 - use the option ```--crypt``` otherwise
 
-```bash
+```console
 $ sudo veritybook-clonedisk <options> <usb stick device> <harddisk device>
 ```
 
@@ -176,15 +182,15 @@ The first boot takes longer as the system tries to bind the LUKS to the TPM2 on 
 It also populates ```/var``` with the missing directories.
 
 You can always clear the data partition via:
-```bash
+```console
 # wipefs --all --force /dev/<disk partition 5>
 ```
 and then either make a xfs
-```bash
+```console
 # mkfs.xfs -L data /dev/<disk partition 5>
 ```
 or LUKS
-```bash
+```console
 # echo -n "zero key" | cryptsetup luksFormat --type luks2 /dev/<disk partition 4> /dev/stdin
 # echo -n "zero key" | cryptsetup luksFormat --type luks2 /dev/<disk partition 5> /dev/stdin
 ```
@@ -194,7 +200,7 @@ On the media created with mkimage.sh, this is partition number *3*.
 ## Post Boot
 
 ### Persistent journal
-```bash
+```console
 $ sudo mkdir /var/log/journal
 ```
 
@@ -204,7 +210,7 @@ The initial password is ```zero key```.
 
 ## Updating
 
-```bash
+```console
 # systemd-inhibit veritybook-update <UPDATE-URL>
 ```
 
