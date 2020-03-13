@@ -33,8 +33,6 @@ docbook-style-xsl
 ebtables
 elfutils-devel
 exa
-f29-backgrounds-base
-f29-backgrounds-gnome
 fd-find
 fedora-gpg-keys
 fedora-packager
@@ -181,7 +179,6 @@ rpcbind
 rsync
 ruby
 screen
-skopeo-containers
 slirp4netns
 sssd-kcm
 systemd-devel
