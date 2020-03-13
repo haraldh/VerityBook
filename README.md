@@ -95,9 +95,7 @@ This will create the following files and directories:
 - `VerityBook` - keep this directory around for updates
   (includes needed passwd/group history and rpmdb)
 - `dist/VerityBook-<HASH>.img` - the root image
-- `dist/VerityBook-<HASH>-efi.tgz` - signed efi binaries
 - `dist/VerityBook-31.<datetime>.json` - metadata of the image 
-- `dist/VerityBook-31.<datetime>.json.sig` - signature of the metadata
 - `dist/VerityBook-latest.json` - a symlink to the latest version
 
 ## Sign the release
@@ -109,10 +107,13 @@ Rename ```DB.key``` ```DB.crt``` to ```VerityBook.key``` and ```VerityBook.crt``
 
 Optionally copy ```Shell.efi``` (might be ```/usr/share/edk2/ovmf/Shell.efi```) to the veritybook directory.
 
-
 ```console
-$ sudo ./mkrelease.sh VerityBook-latest.json
+$ sudo ./mkrelease.sh dist/VerityBook-latest.json
 ```
+
+This will create the following files and directories:
+- `dist/VerityBook-<HASH>-efi.tgz` - signed efi binaries
+- `dist/VerityBook-31.<datetime>.json.sig` - signature of the metadata
 
 if you want to make deltas:
 ```console
