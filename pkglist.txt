@@ -12,6 +12,7 @@ bfa-firmware
 bind-utils
 bzip2
 ca-certificates
+container-selinux
 crun
 cups
 cups-client
@@ -84,9 +85,13 @@ nss-mdns
 nss-tools
 opensc
 openssh-server
+pesign
 pigz
 podman
 psmisc
+python3-lxml
+python3-pip
+python3-wheel
 rpcbind
 rsync
 screen
