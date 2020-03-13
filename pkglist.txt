@@ -1,3 +1,4 @@
+skim
 ShellCheck
 musl-devel
 musl-libc-static
