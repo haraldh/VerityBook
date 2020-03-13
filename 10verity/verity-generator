@@ -68,7 +68,7 @@ if [[ -n "${root}" && -n "${roothash}" ]]; then
 	[Service]
 	Type=oneshot
 	RemainAfterExit=yes
-	ExecStart=/bin/sh -c '/sbin/veritysetup create root ${hashoffset:+--hash-offset="${hashoffset}"} "${root}" "${root}" "${roothash}"'
+	ExecStart=/bin/sh -c '/sbin/veritysetup --restart-on-corruption create root ${hashoffset:+--hash-offset="${hashoffset}"} "${root}" "${root}" "${roothash}"'
 	ExecStop=/sbin/veritysetup remove root
 EOF
 
