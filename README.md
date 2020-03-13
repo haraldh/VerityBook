@@ -80,23 +80,25 @@ For reproducible squashfs builds use https://github.com/squashfskit/squashfskit.
 main VerityBook directory and build it.
 
 ```console
+$ mkdir dist
 $ sudo ./prepare-root.sh \
   --pkglist pkglist.txt \
   --excludelist excludelist.txt \
   --name VerityBook \
   --logo logo.bmp \
   --reposd <REPOSDIR> \
-  --releasever 29
+  --releasever 31
+  --baseoutdir $(realpath dist)
 ```
 
 This will create the following files and directories:
-- ```VerityBook``` - keep this directory around for updates
+- `VerityBook` - keep this directory around for updates
   (includes needed passwd/group history and rpmdb)
-- ```VerityBook-29.<datetime>``` - the resulting <IMGDIR>
-- ```VerityBook-latest.json``` - a metadata file for the update server
-
-or download a prebuilt [image](https://harald.fedorapeople.org/downloads/veritybook.tgz),
-unpack and use this as ```<IMGDIR>```.
+- `dist/VerityBook-<HASH>.img` - the root image
+- `dist/VerityBook-<HASH>-efi.tgz` - signed efi binaries
+- `dist/VerityBook-31.<datetime>.json` - metadata of the image 
+- `dist/VerityBook-31.<datetime>.json.sig` - signature of the metadata
+- `dist/VerityBook-latest.json` - a symlink to the latest version
 
 ## Sign the release
 
