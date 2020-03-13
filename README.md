@@ -123,10 +123,8 @@ If `CHECKPOINT` is set, it will remove old images.
 
 then upload to your update server:
 ```console
-$ TARBALL="$(jq -r '.name' VerityBook-latest.json)-$(jq -r '.version' VerityBook-latest.json)".tgz
-$ scp "$TARBALL" VerityBook-latest.json <DESTINATION>
+$ rsync -Pavorz dist/ <DESTINATION>/
 ```
-
 
 ## QEMU disk image
 ```console
